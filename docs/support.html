@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Support — Doner Kebab Map</title>
+<style>
+  :root {
+    --bg: #f7f5f0;
+    --card: #ffffff;
+    --text: #1c1c1e;
+    --muted: #6b6b70;
+    --accent: #e8502e;
+    --border: #e6e2da;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #121213;
+      --card: #1c1c1e;
+      --text: #f2efe9;
+      --muted: #9a9aa0;
+      --accent: #ff6a45;
+      --border: #2a2a2c;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 40px 22px 80px; }
+  header { display: flex; align-items: center; gap: 14px; margin-bottom: 8px; }
+  .logo {
+    width: 46px; height: 46px; border-radius: 12px; flex: none;
+    background: linear-gradient(160deg, #f7912f, #e8502e);
+    display: flex; align-items: center; justify-content: center; font-size: 24px;
+  }
+  h1 { font-size: 1.7rem; margin: 0; letter-spacing: -0.02em; }
+  .sub { color: var(--muted); font-size: 0.95rem; margin: 4px 0 30px; }
+  h2 { font-size: 1.15rem; margin: 30px 0 6px; letter-spacing: -0.01em; }
+  p, li { color: var(--text); }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .faq {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 16px; padding: 6px 22px 20px; margin-top: 18px;
+  }
+  .q { font-weight: 600; margin: 20px 0 2px; }
+  .a { color: var(--muted); margin: 0; }
+  .contact {
+    margin-top: 26px; background: var(--card); border: 1px solid var(--border);
+    border-radius: 16px; padding: 20px 22px; text-align: center;
+  }
+  .btn {
+    display: inline-block; margin-top: 10px; padding: 11px 22px; border-radius: 999px;
+    background: var(--accent); color: #fff; font-weight: 600;
+  }
+  .btn:hover { text-decoration: none; opacity: 0.92; }
+  footer { margin-top: 40px; color: var(--muted); font-size: 0.85rem; border-top: 1px solid var(--border); padding-top: 20px; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="logo">🥙</div>
+      <h1>Support</h1>
+    </header>
+    <p class="sub">Doner Kebab Map — find the best döner, kebab &amp; gyro spots near you.</p>
+
+    <h2>How it works</h2>
+    <p>
+      Open the app and it shows döner, kebab and gyro places around you on a map and in a
+      distance-sorted list. Tap a place to see details, get directions with Apple or Google Maps,
+      and save it to your favorites.
+    </p>
+
+    <div class="faq">
+      <p class="q">No places are showing up.</p>
+      <p class="a">
+        Make sure location access is enabled (Settings → Doner Kebab Map → Location) and that you
+        have an internet connection. Then reopen the app or tap “Try Again”.
+      </p>
+
+      <p class="q">How do I get directions?</p>
+      <p class="a">Tap a place, then “Get Directions” and choose Apple Maps or Google Maps.</p>
+
+      <p class="q">How do I save a favorite?</p>
+      <p class="a">Open a place and tap the heart icon. Your favorites appear in the “More” tab.</p>
+
+      <p class="q">Is my data collected?</p>
+      <p class="a">
+        No. The app has no account and no server. Your location, favorites and settings stay on
+        your device. See our <a href="privacy-policy.html">Privacy Policy</a>.
+      </p>
+
+      <p class="q">Which devices are supported?</p>
+      <p class="a">iPhone running iOS 17 or later.</p>
+    </div>
+
+    <div class="contact">
+      <p>Still need help? We usually reply within a couple of days.</p>
+      <a class="btn" href="mailto:hsynkesmez97@gmail.com">Email Support</a>
+    </div>
+
+    <footer>
+      © 2026 Huseyin Kesmez · Doner Kebab Map
+    </footer>
+  </div>
+</body>
+</html>

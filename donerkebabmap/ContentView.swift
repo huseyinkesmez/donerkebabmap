@@ -8,14 +8,33 @@
 import SwiftUI
 
 struct ContentView: View {
+    @StateObject private var locationManager = LocationManager()
+    @StateObject private var placesViewModel = PlacesViewModel()
+
     var body: some View {
-        VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("Hello, world!")
+        TabView {
+            MapTabView()
+                .tabItem {
+                    Label("Map", image: "TabMap")
+                }
+
+            ListTabView()
+                .tabItem {
+                    Label("List", image: "TabList")
+                }
+
+            ProfileTabView()
+                .tabItem {
+                    Label("More", systemImage: "ellipsis.circle")
+                }
         }
-        .padding()
+        .tint(AppTheme.primary)
+        .environmentObject(locationManager)
+        .environmentObject(placesViewModel)
+        .onReceive(locationManager.$userLocation) { coordinate in
+            guard let coordinate else { return }
+            placesViewModel.loadPlacesIfNeeded(around: coordinate)
+        }
     }
 }
 
