@@ -31,3 +31,6 @@ Carthage/Build/
 # fastlane
 fastlane/report.xml
 fastlane/screenshots
+
+# App Store pazarlama görselleri (repo dışı)
+appstore-screenshots/
