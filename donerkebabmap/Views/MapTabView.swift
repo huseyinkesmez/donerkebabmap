@@ -14,6 +14,15 @@ struct MapTabView: View {
     @State private var position: MapCameraPosition = .automatic
     @State private var selectedPlace: DonerPlace?
     @State private var hasFocusedOnUser = false
+    /// Last settled camera region; updated when a pan/zoom ends, not per frame.
+    @State private var visibleRegion: MKCoordinateRegion?
+    /// Pins actually rendered: only those inside the visible region, capped.
+    @State private var visiblePlaces: [DonerPlace] = []
+
+    /// Rendering hundreds of annotations made zooming stutter; keep it bounded.
+    private static let maxVisiblePins = 60
+    /// Show name labels only when zoomed in enough for them not to pile up.
+    private static let labelMaxLatitudeDelta = 0.03
 
     /// Area shown when the map opens (~1 km around the user).
     /// The search radius stays 20 km; this is only the visual zoom.
@@ -24,13 +33,20 @@ struct MapTabView: View {
             Map(position: $position) {
                 UserAnnotation()
 
-                ForEach(placesViewModel.places) { place in
+                ForEach(visiblePlaces) { place in
                     Annotation("", coordinate: place.coordinate, anchor: .bottom) {
-                        PlaceMapPin(name: place.name) {
+                        PlaceMapPin(name: place.name, showsLabel: showsLabels) {
                             selectedPlace = place
                         }
                     }
                 }
+            }
+            .onMapCameraChange(frequency: .onEnd) { context in
+                visibleRegion = context.region
+                updateVisiblePlaces()
+            }
+            .onChange(of: placesViewModel.places.count) {
+                updateVisiblePlaces()
             }
             .mapStyle(.standard(pointsOfInterest: .excludingAll))
             .tint(.blue) // keep the user location dot standard blue (not the brand tint)
@@ -73,6 +89,40 @@ struct MapTabView: View {
         }
     }
 
+    private var showsLabels: Bool {
+        (visibleRegion?.span.latitudeDelta ?? 0) < Self.labelMaxLatitudeDelta
+    }
+
+    /// Keeps only places inside the visible region (with a small margin),
+    /// nearest to the map center first, capped at `maxVisiblePins`.
+    private func updateVisiblePlaces() {
+        let places = placesViewModel.places
+        guard let region = visibleRegion else {
+            visiblePlaces = Array(places.prefix(Self.maxVisiblePins))
+            return
+        }
+
+        let center = region.center
+        let latitudeHalf = region.span.latitudeDelta * 0.6
+        let longitudeHalf = region.span.longitudeDelta * 0.6
+
+        func squaredDistanceToCenter(_ place: DonerPlace) -> Double {
+            let dLat = place.coordinate.latitude - center.latitude
+            let dLon = place.coordinate.longitude - center.longitude
+            return dLat * dLat + dLon * dLon
+        }
+
+        let inView = places.filter {
+            abs($0.coordinate.latitude - center.latitude) <= latitudeHalf &&
+            abs($0.coordinate.longitude - center.longitude) <= longitudeHalf
+        }
+        visiblePlaces = Array(
+            inView
+                .sorted { squaredDistanceToCenter($0) < squaredDistanceToCenter($1) }
+                .prefix(Self.maxVisiblePins)
+        )
+    }
+
     private var isLocationDenied: Bool {
         locationManager.authorizationStatus == .denied ||
         locationManager.authorizationStatus == .restricted
@@ -98,32 +148,54 @@ struct MapTabView: View {
 
 private struct PlaceMapPin: View {
     let name: String
+    let showsLabel: Bool
     let onTap: () -> Void
 
     var body: some View {
         Button(action: onTap) {
             VStack(spacing: 3) {
-                Text(name)
-                    .font(.caption2)
-                    .fontWeight(.semibold)
-                    .foregroundStyle(.primary)
-                    .lineLimit(1)
-                    .frame(maxWidth: 130)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(.regularMaterial, in: Capsule())
-                    .overlay(
-                        Capsule().strokeBorder(AppTheme.primary.opacity(0.25), lineWidth: 0.5)
-                    )
-                    .shadow(color: .black.opacity(0.12), radius: 2, y: 1)
+                if showsLabel {
+                    // Solid background instead of a material: a live blur per
+                    // pin was the most expensive part of redrawing while zooming.
+                    Text(name)
+                        .font(.caption2)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
+                        .frame(maxWidth: 130)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Color(.systemBackground).opacity(0.92), in: Capsule())
+                        .overlay(
+                            Capsule().strokeBorder(AppTheme.primary.opacity(0.25), lineWidth: 0.5)
+                        )
+                }
 
-                marker
+                Image(uiImage: PinArtwork.image)
+                    // The image is padded so its shadow isn't clipped; pull the
+                    // padding back in so the pointer tip sits on the coordinate.
+                    .padding(.bottom, -PinArtwork.shadowPadding)
             }
         }
         .buttonStyle(.plain)
     }
+}
 
-    private var marker: some View {
+/// The marker is rendered once into a bitmap and reused by every pin, so the
+/// map draws a cheap image instead of a live gradient + glyph + shadows per pin.
+@MainActor
+private enum PinArtwork {
+    static let shadowPadding: CGFloat = 6
+
+    static let image: UIImage = {
+        let renderer = ImageRenderer(content: MarkerArtwork().padding(shadowPadding))
+        renderer.scale = 3
+        return renderer.uiImage ?? UIImage()
+    }()
+}
+
+private struct MarkerArtwork: View {
+    var body: some View {
         VStack(spacing: 0) {
             DonerGlyph(meat: Color.white, spit: .white)
                 .frame(width: 20, height: 26)
