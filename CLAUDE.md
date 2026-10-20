@@ -1,116 +1,50 @@
-# DönerKebabMap — Proje Context
+# Doner Kebab Map — Proje Context
 
-## Ne yapıyoruz
-iOS uygulaması (Swift + SwiftUI). Amaç: kullanıcının konumuna göre yakındaki
-döner/kebab/gyro satan yerleri Google Maps benzeri bir haritada göstermek.
-Geliştirici (ben) QA engineer, yazılım/backend bilgisi sınırlı — adım adım,
-basit ve net açıklamalarla ilerlenmesi gerekiyor. Konuşma dili Türkçe.
+## Bu proje
+Yakındaki doner/kebab/gyro yerlerini haritada gösteren iOS uygulaması
+(Swift + SwiftUI, MVVM). **v1.0 App Store'da yayında** (build 5, git tag `v1.0`).
 
-## Ürün gereksinimleri
-- Uygulama açılışta doğrudan harita ekranı gösterir (TabView'in ilk sekmesi).
-- Kullanıcı konumu etrafında ~20km yarıçapında döner/kebab/gyro yerleri
-  harita üzerinde pin olarak gösterilir. Pin'in altında/yanında yerin ismi yazar.
-- Pin'e tıklayınca alttan bir card (sheet) açılır: isim, kullanıcıya mesafe,
-  adres, ve "Tarif Al" butonu.
-- "Tarif Al" butonuna basınca Apple Haritalar / Google Haritalar seçenekleri
-  çıkar (confirmationDialog), seçilen uygulama açılıp yol tarifi başlar.
-- Alt sekmeler: **Harita**, **Liste** (aynı veri, mesafeye göre sıralı liste
-  halinde, her satırda isim + mesafe), **Profil** (MVP'de basit: favoriler
-  placeholder + hakkında).
+Geliştirici QA engineer, yazılım bilgisi sınırlı: adım adım, basit ve net
+açıkla. **Konuşma dili Türkçe.**
 
-## Mimari kararlar
-- **Backend YOK** (MVP için gerek yok). Veri doğrudan cihazdan haritacılık
-  servisine sorularak alınıyor.
-- **Veri kaynağı: Apple MapKit (`MKLocalSearch`)** — ücretsiz, sınırsız,
-  API key gerektirmiyor, Swift'e gömülü. "döner", "kebab", "kebap", "gyro",
-  "dönerci" anahtar kelimeleriyle ayrı ayrı arama yapıp sonuçları birleştirip
-  dedupe ediyoruz.
-- **Google Places API'ye MVP'de geçilmedi** çünkü: ücretsiz kota ayda ~5.000
-  arama ile sınırlı (Pro SKU), üstelik ücretsiz kotayı kullanmak için bile
-  Google Cloud'da faturalandırma (kredi kartı) açman gerekiyor. İleride
-  (V2) veri kalitesi yetersiz kalırsa değerlendirilecek.
-- **OpenStreetMap / Overpass API** V1.1'de veri zenginleştirme için
-  eklenmesi planlanan ikinci kaynak (özellikle Avrupa'da OSM'de dönerciler
-  `cuisine=kebab` diye özel etiketli, isme bağımlı kalmıyoruz).
-- Mimari pattern: **MVVM** (Models, ViewModels, Views, Services, Utilities
-  klasörleri).
+## Kurallar
+- Uygulama içi metinlerde "döner" değil **"doner"** (Türkçe karakter yok).
+  Sadece `PlacesSearchService` arama anahtar kelimeleri ö'lü kalabilir.
+- Varsayılan dil İngilizce; Almanca (samimi "du") ve Fransızca ("vous") çevirileri
+  `Localizable.xcstrings`'te. Yeni metin eklerken DE/FR çevirisini de ekle.
+- Renkler `AppTheme`'de: dolgu/buton için `primary`, tonlu zemin üstündeki
+  metin/ikon için `primaryAccent` (light/dark'ta okunaklı). Logo amber.
+- Segmented `Picker` içine `ViewThatFits` vb. sarmalayıcı koyma — bozuluyor.
+- Uygulama içi logo: büyük yerlerde (splash, profil) `DonerConeLogo`,
+  küçük işaretlerde (pin, liste, kart) `DonerGlyph`.
+- Commit/push sadece istenince.
 
-## Yol haritası
-1. **MVP** (şu an bu aşamadayız): Harita + pin'ler + detay card + yol tarifi
-   + liste ekranı + basit profil.
-2. **V1.1:** Overpass API ile veri zenginleştirme, favoriler (SwiftData ile
-   kalıcı hale getirme).
-3. **V2:** Google Places API entegrasyonu (opsiyonel), kullanıcı hesabı /
-   senkron için basit backend (muhtemelen Firebase).
+## Mimari
+- **Backend yok.** Veri: Apple MapKit `MKLocalSearch` (ücretsiz, key yok),
+  20 km yarıçap, çoklu anahtar kelime + dedupe (aynı isim ancak <250 m ise aynı yer).
+- Konum tek seferlik alınır; 15 sn'de gelmezse "Location Unavailable" ekranı.
+- Favoriler `FavoriteStore` ile UserDefaults'ta (isim + <30 m koordinat eşleşmesi).
+- Ana arayüz (`ContentView`) onboarding bitmeden mount edilmez — aksi halde
+  cihazda dokunuşlar düşüyordu.
+- MapKit **vermiyor**: puan, yorum, çalışma saati, fotoğraf. (`rating` şimdilik nil.)
 
-## Şu ana kadar verilen promptlar (sırayla uygulandı)
-1. Proje iskeleti: MVVM klasör yapısı, `DonerPlace` model, TabView (Harita/
-   Liste/Profil) + boş placeholder view'lar.
-2. `LocationManager`: CoreLocation, konum izni, `@Published userLocation`.
-3. `PlacesSearchService`: MKLocalSearch ile 20km yarıçapta arama, anahtar
-   kelime bazlı filtreleme, dedupe, mesafeye göre sıralama.
-4. `MapTabView`: harita, custom pin (fork.knife ikonu + isim etiketi),
-   pin tıklayınca sheet açma, kullanıcı konumu (mavi nokta).
-5. `PlaceDetailCard`: alttan açılan sheet, isim/mesafe/adres/"Tarif Al" butonu.
-6. `DirectionsHelper`: Apple Maps (`openInMaps`) ve Google Maps
-   (`comgooglemaps://` scheme, yoksa web fallback) açma fonksiyonları,
-   confirmationDialog entegrasyonu.
-7. `ListTabView` + paylaşılan `PlacesViewModel` (arama tek seferde yapılıp
-   hem Map hem List sekmesi aynı veriyi kullanıyor).
-8. `ProfileTabView`: basit placeholder (favoriler boş state + hakkında).
-9. Kod incelemesi + hata düzeltmeleri: `LocationManager` hata yönetimi ve
-   init temizliği; `MapTabView`'de her konum güncellemesinde tekrar arama
-   yapan hata giderildi (artık ilk konumda tek sefer).
-10. Refactor: paylaşılan `PlacesViewModel` `ContentView`'de `@StateObject`
-    olarak oluşturulup her iki sekmeye `.environmentObject` ile enjekte edildi;
-    arama merkezi olarak (sekmeden bağımsız) tek sefer tetikleniyor.
-    `ListTabView` tamamlandı (mesafeye göre sıralı liste, satıra tıklayınca
-    `PlaceDetailCard` sheet). `DonerPlace`'e `formattedDistance` eklendi.
-11. Harita temizliği: `.mapStyle(.standard(pointsOfInterest: .excludingAll))`
-    ile Apple Maps'in kendi POI etiketleri gizlendi, sadece kendi pinlerimiz
-    görünüyor.
-12. Tasarım/kişiselleştirme (PM/UX zenginleştirme):
-    - Ortak marka teması `AppTheme` (kırmızı/turuncu degrade); uygulama geneli
-      `.tint` marka rengine bağlandı.
-    - Açılış zoom'u ~2 km'ye çekildi (arama yine 20 km).
-    - Özel `DonerGlyph`: SwiftUI ile sıfırdan çizilmiş döner logosu (şiş + et
-      kütlesi). Pin, splash, liste kartı, detay kartı ve profilde kullanılıyor.
-    - Pin gerçek harita işaretçisine dönüştürüldü (marka daire + beyaz halka +
-      aşağı sivri uç).
-    - `ListTabView` kart tabanlı canlı tasarıma geçirildi (döner rozeti,
-      mesafe pill'i, chevron, "X yer" sayacı).
-    - `SplashView` + `RootView`: açılışta animasyonlu marka splash ekranı,
-      ~1.8 sn sonra ana içeriğe geçiş. Uygulama girişi `RootView`.
+## Dosya yapısı
+- `Models/` — `DonerPlace`, `FavoritePlace`
+- `ViewModels/PlacesViewModel` — paylaşılan arama state'i
+- `Services/` — `LocationManager`, `PlacesSearchService`, `FavoriteStore`
+- `Utilities/` — `AppTheme`, `DonerConeLogo`, `DonerGlyph`, `DistanceFormatter`,
+  `DirectionsHelper`, `TransportMode`, `AppearanceMode`, `AdaptiveText`, `MailView`
+- `Views/` — `RootView` (splash + onboarding), `MapTabView`, `ListTabView`,
+  `PlaceDetailCard`, `ProfileTabView` ("More"), `OnboardingView`, `LoadingView`,
+  hata/izin ekranları
+- `docs/` — `privacy-policy.html`, `support.html`, `app-review-notes.txt`
 
-**Not:** Info.plist anahtarları eklendi ve doğrulandı:
-- `NSLocationWhenInUseUsageDescription` (konum izni açıklaması) — build
-  ayarlarında `INFOPLIST_KEY_NSLocationWhenInUseUsageDescription` olarak
-  tanımlı (project.pbxproj).
-- `LSApplicationQueriesSchemes` içinde `comgooglemaps` (Google Maps'in yüklü
-  olup olmadığını kontrol edebilmek için) — `DonerKebabMap-Info.plist`
-  dosyasında tanımlı.
+## Yayın
+- Sonraki yüklemede build numarası **6+**, sürüm 1.0.1 (düzeltme) / 1.1 (özellik).
+- App Review Notes: `docs/app-review-notes.txt` (<4000 karakter). İçindeki
+  "sonuçlar konuma bağlı, büyük bir şehirde test edin" paragrafı kalmalı.
+- Çalıştırma: iOS simülatöründe önce sanal konum ayarla (ör. Berlin 52.52,13.405).
 
-## Araç geçmişi (önemli değil ama bilgi için)
-Önce Cursor + ücretsiz plan denendi, Composer/Agent modu "cannot be billed
-to an API key" hatası verdi (ücretsiz plan Composer'ın özel modellerini
-kişisel API key ile çalıştırmıyor). Bunun üzerine Cursor'dan vazgeçilip
-**Claude Code Pro** aboneliğine geçildi — agent kısıtlaması olmadan çalışıyor.
-
-## Şu an nerede kaldık
-**v1.0 App Store'da yayında** (build 5, git tag `v1.0`, commit cd796cd).
-
-İlk gönderim Guideline 2.1 "Information Needed" ile döndü (Notes boştu).
-Çözüm: App Review Notes doldurulup (docs/app-review-notes.txt, <4000 karakter)
-fiziksel cihaz ekran kaydıyla Resolution Center'dan cevaplandı + düzeltilmiş
-build yüklendi. Notes'taki "sonuçlar konuma bağlı, Berlin/Londra'da test edin"
-paragrafı bilerek kalmalı (reviewer California'da).
-
-v1.0'da olanlar (ilk tasarım listesine ek): onboarding, favoriler (UserDefaults),
-EN/DE/FR yerelleştirme, dark mode + görünüm seçici, gerçek rota mesafesi ve
-varış saati, konum zaman aşımı ekranı, özel app icon (koni logo) ve tab ikonları.
-Metinlerde "döner" değil "doner" (Türkçe karakter yok).
-
-Sonraki sürüm kuralları: build numarası 6+, sürüm 1.0.1 (düzeltme) / 1.1 (özellik).
-
-Olası sonraki adımlar: pin kümeleme, listede arama/filtre, rota çizgisi,
-Overpass/Google Places ile puan ve çalışma saatleri (MapKit vermiyor).
+## Olası sonraki adımlar
+Pin kümeleme, listede arama/filtre, rota çizgisi, Overpass / Google Places ile
+puan ve çalışma saatleri.
