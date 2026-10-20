@@ -17,6 +17,7 @@ struct SearchErrorView: View {
             Text("Check your internet connection and try again.")
         } actions: {
             Button("Try Again", action: retry)
+                .adaptiveText()
                 .buttonStyle(.borderedProminent)
                 .controlSize(.large)
                 .tint(AppTheme.primary)

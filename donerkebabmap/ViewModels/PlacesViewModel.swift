@@ -23,7 +23,7 @@ final class PlacesViewModel: ObservableObject {
     }
 
     /// İlk geçerli konumda bir kez arama yapar; sonraki konum güncellemelerinde
-    /// tekrar tetiklenmez.
+    /// tekrar tetiklenmez..
     func loadPlacesIfNeeded(around coordinate: CLLocationCoordinate2D) {
         guard !hasSearched else { return }
         hasSearched = true

@@ -52,6 +52,7 @@ struct OnboardingView: View {
             Spacer()
             Button("Skip", action: onFinish)
                 .font(.subheadline.weight(.semibold))
+                .adaptiveText()
                 .foregroundStyle(textColor.opacity(0.55))
                 .opacity(isLastPage ? 0 : 1)
                 .disabled(isLastPage)
@@ -77,12 +78,15 @@ struct OnboardingView: View {
             if isLastPage {
                 onFinish()
             } else {
-                withAnimation { page += 1 }
+                // .page stilindeki TabView geçişi kendisi animasyonluyor;
+                // ayrıca withAnimation sarmak animasyonları çakıştırıyor.
+                page += 1
             }
         } label: {
             Text(isLastPage ? "Get Started" : "Next")
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(background)
+                .adaptiveText()
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 15)
                 .background(textColor.opacity(0.9), in: Capsule())
@@ -103,7 +107,7 @@ private struct OnboardingPage: Identifiable {
         OnboardingPage(
             symbol: nil,
             title: "Welcome to Doner Kebab Map",
-            message: "Discover the best döner, kebab and gyro spots around you — all on one map."
+            message: "Discover the best doner, kebab and gyro spots around you — all on one map."
         ),
         OnboardingPage(
             symbol: "map.fill",

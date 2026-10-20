@@ -20,6 +20,7 @@ struct LocationPermissionView: View {
                 guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
                 openURL(url)
             }
+            .adaptiveText()
             .buttonStyle(.borderedProminent)
             .controlSize(.large)
             .tint(AppTheme.primary)

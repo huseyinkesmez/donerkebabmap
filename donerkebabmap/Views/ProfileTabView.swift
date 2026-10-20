@@ -56,6 +56,7 @@ struct ProfileTabView: View {
                                     systemImage: "list.bullet"
                                 )
                                 .font(.subheadline.weight(.semibold))
+                                .adaptiveText()
                             }
                         }
                     }
@@ -84,9 +85,11 @@ struct ProfileTabView: View {
                             VStack(alignment: .leading, spacing: 1) {
                                 Text("Contact")
                                     .foregroundStyle(.primary)
+                                    .adaptiveText()
                                 Text("Send us a message")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
+                                    .adaptiveText()
                             }
 
                             Spacer(minLength: 0)

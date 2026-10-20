@@ -12,10 +12,11 @@ struct PlaceDetailCard: View {
 
     @EnvironmentObject private var favoriteStore: FavoriteStore
     @Environment(\.openURL) private var openURL
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var showDirectionsOptions = false
     @State private var transportMode: TransportMode = .driving
-    @State private var drivingTime: TimeInterval?
-    @State private var walkingTime: TimeInterval?
+    @State private var drivingEstimate: TravelEstimate?
+    @State private var walkingEstimate: TravelEstimate?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -36,8 +37,15 @@ struct PlaceDetailCard: View {
 
             footer
         }
-        .presentationDetents([.fraction(0.55), .large])
+        .frame(
+            minWidth: isRegularWidth ? 540 : nil,
+            minHeight: isRegularWidth ? 720 : nil
+        )
+        .presentationDetents(detents)
         .presentationDragIndicator(.visible)
+        // Acik arka plan verilmezse sheet yari saydam kalip altindaki
+        // haritayla karisiyor; opak sistem zemini kullan.
+        .presentationBackground(Color(.systemBackground))
         .task(id: place.id) {
             await loadTravelTimes()
         }
@@ -54,6 +62,14 @@ struct PlaceDetailCard: View {
             }
             Button("Cancel", role: .cancel) {}
         }
+    }
+
+    private var isRegularWidth: Bool { horizontalSizeClass == .regular }
+
+    /// iPad'de (regular genişlik) sheet ortada sabit boyutlu bir kutu olarak
+    /// açıldığı için kesirli detent içeriği eziyor; orada tam yükseklik kullan.
+    private var detents: Set<PresentationDetent> {
+        isRegularWidth ? [.large] : [.fraction(0.55), .large]
     }
 
     // MARK: - Sections
@@ -114,10 +130,10 @@ struct PlaceDetailCard: View {
                     Text(category)
                         .font(.caption)
                         .fontWeight(.semibold)
-                        .foregroundStyle(AppTheme.primary)
+                        .foregroundStyle(AppTheme.primaryAccent)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 3)
-                        .background(AppTheme.primary.opacity(0.12), in: Capsule())
+                        .background(AppTheme.primaryAccent.opacity(0.12), in: Capsule())
                 }
             }
         }
@@ -126,7 +142,10 @@ struct PlaceDetailCard: View {
     private var transportPicker: some View {
         Picker("Transport mode", selection: $transportMode) {
             ForEach(TransportMode.allCases) { mode in
-                Label(mode.titleKey, systemImage: mode.icon).tag(mode)
+                // Segmented picker yalnizca Text/Image/Label icerigini render
+                // eder; ViewThatFits gibi sarmalayicilar segmentleri bozuyor.
+                Label(mode.titleKey, systemImage: mode.icon)
+                    .tag(mode)
             }
         }
         .pickerStyle(.segmented)
@@ -134,20 +153,27 @@ struct PlaceDetailCard: View {
 
     private var infoSection: some View {
         VStack(alignment: .leading, spacing: 14) {
-            if place.formattedDistance != nil || selectedTravelTime != nil {
+            if displayedDistance != nil || selectedEstimate != nil {
                 InfoRow(icon: "location.fill") {
                     HStack(spacing: 8) {
-                        if let distance = place.formattedDistance {
-                            Text(distance)
+                        if let displayedDistance {
+                            Text(displayedDistance)
                         }
-                        if let selectedTravelTime {
-                            if place.formattedDistance != nil {
+                        if let estimate = selectedEstimate {
+                            if displayedDistance != nil {
                                 Text("•").foregroundStyle(.secondary)
                             }
-                            Label(formattedDuration(selectedTravelTime), systemImage: transportMode.icon)
+                            Label(formattedDuration(estimate.travelTime), systemImage: transportMode.icon)
                                 .foregroundStyle(.secondary)
                         }
                     }
+                }
+            }
+
+            if let estimate = selectedEstimate {
+                InfoRow(icon: "clock.fill") {
+                    Text("Arrive by \(estimate.arrivalDate.formatted(date: .omitted, time: .shortened))")
+                        .foregroundStyle(.secondary)
                 }
             }
 
@@ -186,19 +212,29 @@ struct PlaceDetailCard: View {
                 } label: {
                     Image(systemName: isFavorite ? "heart.fill" : "heart")
                         .font(.headline)
-                        .frame(width: 52, height: 50)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.large)
+                // Genisligi butonun kendisine veriyoruz: ic cerceveye vermek
+                // .bordered stilinin kendi dolgusuyla toplanip sisiriyordu.
+                .frame(width: 48, height: 50)
                 .tint(isFavorite ? .red : .gray)
                 .accessibilityLabel(isFavorite ? "Remove from favorites" : "Add to favorites")
 
                 Button {
                     showDirectionsOptions = true
                 } label: {
-                    Label("Get Directions", systemImage: "arrow.triangle.turn.up.right.diamond.fill")
-                        .font(.headline)
-                        .frame(maxWidth: .infinity)
+                    // Dar ekranda/uzun çeviride satır kırmak yerine önce ikonu
+                    // bırakır, gerekirse metni küçültür.
+                    ViewThatFits(in: .horizontal) {
+                        Label("Get Directions", systemImage: "arrow.triangle.turn.up.right.diamond.fill")
+                        Text("Get Directions")
+                    }
+                    .font(.headline)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
+                    .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.large)
@@ -208,11 +244,12 @@ struct PlaceDetailCard: View {
                     ShareLink(item: shareURL) {
                         Image(systemName: "square.and.arrow.up")
                             .font(.headline)
-                            .frame(width: 52, height: 50)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
                     .buttonStyle(.bordered)
                     .controlSize(.large)
-                    .tint(AppTheme.primary)
+                    .frame(width: 48, height: 50)
+                    .tint(AppTheme.primaryAccent)
                 }
             }
             .padding(.horizontal, 20)
@@ -223,11 +260,20 @@ struct PlaceDetailCard: View {
 
     // MARK: - Helpers
 
-    private var selectedTravelTime: TimeInterval? {
+    private var selectedEstimate: TravelEstimate? {
         switch transportMode {
-        case .driving: drivingTime
-        case .walking: walkingTime
+        case .driving: drivingEstimate
+        case .walking: walkingEstimate
         }
+    }
+
+    /// Rota mesafesi alinabildiyse onu goster: kus ucusu mesafe gercek
+    /// yuruyus/surus mesafesinden belirgin sekilde kisa cikiyor.
+    private var displayedDistance: String? {
+        if let meters = selectedEstimate?.distanceInMeters {
+            return DistanceFormatter.string(fromMeters: meters)
+        }
+        return place.formattedDistance
     }
 
     private func toggleFavorite() {
@@ -242,18 +288,26 @@ struct PlaceDetailCard: View {
     }
 
     private func loadTravelTimes() async {
-        async let driving = estimatedTime(for: .automobile)
-        async let walking = estimatedTime(for: .walking)
-        drivingTime = await driving
-        walkingTime = await walking
+        async let driving = estimate(for: .automobile)
+        async let walking = estimate(for: .walking)
+        drivingEstimate = await driving
+        walkingEstimate = await walking
     }
 
-    private func estimatedTime(for type: MKDirectionsTransportType) async -> TimeInterval? {
+    private func estimate(for type: MKDirectionsTransportType) async -> TravelEstimate? {
         let request = MKDirections.Request()
         request.source = MKMapItem.forCurrentLocation()
         request.destination = place.mapItem
         request.transportType = type
-        return try? await MKDirections(request: request).calculateETA().expectedTravelTime
+
+        guard let response = try? await MKDirections(request: request).calculateETA() else {
+            return nil
+        }
+        return TravelEstimate(
+            travelTime: response.expectedTravelTime,
+            distanceInMeters: response.distance,
+            arrivalDate: response.expectedArrivalDate
+        )
     }
 
     private func formattedDuration(_ interval: TimeInterval) -> String {
@@ -262,6 +316,14 @@ struct PlaceDetailCard: View {
         formatter.unitsStyle = .abbreviated
         return formatter.string(from: max(interval, 60)) ?? ""
     }
+}
+
+/// `calculateETA()` yanıtından tutulan bilgiler. Aynı çağrı hem süreyi hem
+/// gerçek rota mesafesini hem de tahmini varış saatini döndürüyor.
+private struct TravelEstimate {
+    let travelTime: TimeInterval
+    let distanceInMeters: CLLocationDistance
+    let arrivalDate: Date
 }
 
 // MARK: - Row helpers
@@ -274,7 +336,7 @@ private struct InfoRow<Content: View>: View {
         HStack(alignment: .top, spacing: 12) {
             Image(systemName: icon)
                 .font(.subheadline)
-                .foregroundStyle(AppTheme.primary)
+                .foregroundStyle(AppTheme.primaryAccent)
                 .frame(width: 22)
             content
                 .font(.subheadline)
@@ -293,11 +355,11 @@ private struct ContactRow: View {
             HStack(spacing: 12) {
                 Image(systemName: icon)
                     .font(.subheadline)
-                    .foregroundStyle(AppTheme.primary)
+                    .foregroundStyle(AppTheme.primaryAccent)
                     .frame(width: 22)
                 Text(text)
                     .font(.subheadline)
-                    .foregroundStyle(AppTheme.primary)
+                    .foregroundStyle(AppTheme.primaryAccent)
                     .lineLimit(1)
                 Spacer(minLength: 0)
                 Image(systemName: "chevron.right")

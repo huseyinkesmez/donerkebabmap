@@ -39,7 +39,12 @@ final class PlacesSearchService {
         "rotisserie kebab",
         "kebab stand"
     ]
-    private let dedupeDistanceThreshold: Double = 50
+    /// Ayni isimli iki kayit ancak bu mesafeden yakinsa ayni yer sayilir.
+    /// Daha uzaktakiler ayni zincirin farkli subeleridir ve korunur.
+    private let sameNameDistanceThreshold: Double = 250
+    /// Isimler farkli olsa bile bu kadar yakin iki kayit ayni POI kabul edilir
+    /// (ayni dukkan, farkli anahtar kelimede biraz farkli yazilmis olabilir).
+    private let sameSpotDistanceThreshold: Double = 25
 
     func search(
         around coordinate: CLLocationCoordinate2D,
@@ -138,39 +143,42 @@ final class PlacesSearchService {
     }
 
     private func deduplicate(_ mapItems: [MKMapItem]) -> [MKMapItem] {
-        var uniqueItems: [MKMapItem] = []
+        // Konumlari bir kez hesaplayip yaniyla tasiyoruz; aksi halde her
+        // karsilastirmada yeniden CLLocation uretiliyordu.
+        var unique: [(item: MKMapItem, name: String, location: CLLocation)] = []
 
         for mapItem in mapItems {
-            let isDuplicate = uniqueItems.contains { existingItem in
-                isSamePlace(mapItem, as: existingItem)
+            let coordinate = mapItem.placemark.coordinate
+            let candidate = (
+                item: mapItem,
+                name: normalizedName(mapItem.name),
+                location: CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
+            )
+
+            let isDuplicate = unique.contains { existing in
+                isSamePlace(candidate, existing)
             }
 
             if !isDuplicate {
-                uniqueItems.append(mapItem)
+                unique.append(candidate)
             }
         }
 
-        return uniqueItems
+        return unique.map(\.item)
     }
 
-    private func isSamePlace(_ lhs: MKMapItem, as rhs: MKMapItem) -> Bool {
-        let lhsName = normalizedName(lhs.name)
-        let rhsName = normalizedName(rhs.name)
+    private func isSamePlace(
+        _ lhs: (item: MKMapItem, name: String, location: CLLocation),
+        _ rhs: (item: MKMapItem, name: String, location: CLLocation)
+    ) -> Bool {
+        let distance = lhs.location.distance(from: rhs.location)
 
-        if !lhsName.isEmpty, lhsName == rhsName {
-            return true
+        // Ayni isim TEK BASINA yeterli degil: farkli subeler ayni adi tasiyabilir.
+        if !lhs.name.isEmpty, lhs.name == rhs.name {
+            return distance < sameNameDistanceThreshold
         }
 
-        let lhsLocation = CLLocation(
-            latitude: lhs.placemark.coordinate.latitude,
-            longitude: lhs.placemark.coordinate.longitude
-        )
-        let rhsLocation = CLLocation(
-            latitude: rhs.placemark.coordinate.latitude,
-            longitude: rhs.placemark.coordinate.longitude
-        )
-
-        return lhsLocation.distance(from: rhsLocation) < dedupeDistanceThreshold
+        return distance < sameSpotDistanceThreshold
     }
 
     private func normalizedName(_ name: String?) -> String {

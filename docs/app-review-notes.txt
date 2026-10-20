@@ -1,0 +1,33 @@
+Thank you for reviewing Doner Kebab Map.
+
+DEMO ACCOUNT: Not required. No accounts, login, purchases, subscriptions, or user-generated content. All features are available immediately after launch.
+
+IMPORTANT FOR TESTING: The app shows doner/kebab restaurants near the device's current location (20 km radius, via Apple MapKit). Results depend on the reviewer's location; in an area with few such restaurants, few or no pins may appear. This is expected behavior, not a bug. For a full result set, please test in or simulate a major city such as Berlin, London, or Istanbul.
+
+1. SCREEN RECORDING
+Attached to this reply, captured on a physical iPhone. It shows app launch, onboarding, the location permission prompt, the map with results, the place detail sheet, adding a favorite, the directions flow, and the List and More tabs.
+
+2. DEVICES TESTED
+iPhone 13, iOS 27.0 (physical device). Also tested on iOS Simulator (iPhone 17, iOS 26.2). The app supports iOS 17.0 and later.
+
+3. FUNCTION AND TARGET AUDIENCE
+Doner Kebab Map helps users quickly find doner, kebab, and gyro restaurants near them. General map apps mix all restaurants together, which makes this type of food slow to find, especially when travelling. The app shows a focused map of nearby places with distance, estimated driving/walking time, arrival time, address, and one-tap directions in Apple Maps or Google Maps. Users can save favorites. Audience: general public (4+). Free, no ads, no in-app purchases.
+
+4. SETUP AND ACCESS
+No credentials or sample files needed.
+- Launch the app; a short onboarding appears (Next / Skip).
+- Allow location ("Allow While Using App"). Only When-In-Use location is requested.
+- Nearby places load automatically as pins.
+- Tap a pin for details: distance, travel time, arrival time, address, phone/website when available, favorite (heart), Get Directions, Share.
+- List tab: same places sorted by distance.
+- More tab: favorites (swipe to delete), appearance (System/Light/Dark), version, contact.
+If location is denied, the app still opens and offers a button to open Settings.
+
+5. EXTERNAL SERVICES
+Only Apple frameworks: MapKit (place search and travel-time estimates), Core Location (device location), MessageUI (contact email, user-initiated). Directions open Apple Maps or Google Maps at the user's choice; only destination coordinates are passed in the URL. No backend server, no authentication, no payments, no ads, no analytics or tracking SDKs, no AI services. Favorites and settings are stored locally on the device only. No personal data is collected or shared (see privacy manifest and privacy policy).
+
+6. REGIONAL DIFFERENCES
+The app works the same in all regions; no region-locked features or content. The UI is localized in English, German, and French. The only variation is the number of results, which depends on Apple Maps coverage in the area.
+
+7. REGULATED INDUSTRY / THIRD-PARTY MATERIAL
+Not applicable. Place data comes from Apple MapKit via public APIs. The app icon, logo, and artwork are original.

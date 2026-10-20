@@ -48,7 +48,12 @@ struct MapTabView: View {
                 SearchErrorView(retry: retrySearch)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .background(Color(.systemBackground))
-            } else if placesViewModel.isLoading && placesViewModel.places.isEmpty {
+            } else if locationManager.locationTimedOut, locationManager.userLocation == nil {
+                LocationUnavailableView(retry: locationManager.retryLocation)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(Color(.systemBackground))
+            } else if placesViewModel.places.isEmpty,
+                      placesViewModel.isLoading || locationManager.userLocation == nil {
                 LoadingView()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .background(.ultraThinMaterial)

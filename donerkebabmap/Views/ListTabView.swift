@@ -35,13 +35,13 @@ struct ListTabView: View {
                             Image(systemName: "mappin.and.ellipse")
                                 .font(.caption2.weight(.bold))
                             Text("\(placesViewModel.places.count)")
-                                .font(.subheadline.weight(.bold))
+                                .font(.footnote.weight(.semibold))
                                 .contentTransition(.numericText())
                         }
-                        .foregroundStyle(AppTheme.primary)
-                        .padding(.horizontal, 11)
-                        .padding(.vertical, 6)
-                        .background(AppTheme.primary.opacity(0.12), in: Capsule())
+                        // Toolbar ogeleri iOS'un kendi materyalini kullaniyor;
+                        // ustune renkli kapsul koymak bulanik bir leke gibi
+                        // duruyordu. Native gorunum: arka plansiz, notr renk.
+                        .foregroundStyle(.secondary)
                     }
                 }
             }
@@ -80,6 +80,8 @@ struct ListTabView: View {
             LocationPermissionView()
         } else if placesViewModel.loadFailed {
             SearchErrorView(retry: retrySearch)
+        } else if locationManager.locationTimedOut, locationManager.userLocation == nil {
+            LocationUnavailableView(retry: locationManager.retryLocation)
         } else if placesViewModel.isLoading || locationManager.userLocation == nil {
             LoadingView()
         } else {
@@ -169,4 +171,5 @@ private struct PlaceRow: View {
     ListTabView()
         .environmentObject(PlacesViewModel())
         .environmentObject(FavoriteStore())
+        .environmentObject(LocationManager())
 }

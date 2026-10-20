@@ -19,10 +19,13 @@ struct RootView: View {
 
     var body: some View {
         ZStack {
-            ContentView()
-                .environmentObject(favoriteStore)
-
-            if !hasSeenOnboarding {
+            // Onboarding bitmeden ana arayüzü kurma: aksi halde konum izni
+            // istemi, 20 km'lik arama ve harita/pin çizimi onboarding
+            // görünürken ana thread'i meşgul edip dokunuşları düşürüyor.
+            if hasSeenOnboarding {
+                ContentView()
+                    .environmentObject(favoriteStore)
+            } else {
                 OnboardingView {
                     withAnimation(.easeOut(duration: 0.4)) {
                         hasSeenOnboarding = true

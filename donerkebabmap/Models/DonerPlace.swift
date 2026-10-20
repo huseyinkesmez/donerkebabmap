@@ -18,10 +18,11 @@ struct DonerPlace: Identifiable, Equatable {
     let rating: Double?
     let mapItem: MKMapItem
 
-    /// Mesafe biçimi ("4.3 km"); mesafe bilinmiyorsa nil.
+    /// Kuş uçuşu mesafenin okunabilir hâli; mesafe bilinmiyorsa nil.
+    /// Detay kartında, rota mesafesi alınabildiyse onun yerine o kullanılır.
     var formattedDistance: String? {
         guard let distanceInMeters else { return nil }
-        return String(format: "%.1f km", distanceInMeters / 1000)
+        return DistanceFormatter.string(fromMeters: distanceInMeters)
     }
 
     /// Aranabilir telefon numarası (varsa).
