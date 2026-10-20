@@ -97,23 +97,20 @@ kişisel API key ile çalıştırmıyor). Bunun üzerine Cursor'dan vazgeçilip
 **Claude Code Pro** aboneliğine geçildi — agent kısıtlaması olmadan çalışıyor.
 
 ## Şu an nerede kaldık
-MVP fonksiyonel olarak tamam + tasarım zenginleştirmesi yapıldı (özel döner
-logosu, splash screen, kartlı liste, marka teması). Uygulama simülatörde
-çalışıyor ve build başarılı.
+**v1.0 App Store'da yayında** (build 5, git tag `v1.0`, commit cd796cd).
 
-Sıradaki olası adımlar (henüz seçilmedi):
-- QA edge case kontrolleri: konum izni reddedilirse, internet yoksa, ~2 km
-  açılış zoom'unda yakında hiç yer yoksa davranış.
-- Pin seçili durumu (tıklanınca büyüme/renk), yoğun bölgede pin kümeleme
-  (clustering), listede arama/filtre çubuğu.
-- V1.1: favoriler (SwiftData ile kalıcı), Overpass API ile veri zenginleştirme.
+İlk gönderim Guideline 2.1 "Information Needed" ile döndü (Notes boştu).
+Çözüm: App Review Notes doldurulup (docs/app-review-notes.txt, <4000 karakter)
+fiziksel cihaz ekran kaydıyla Resolution Center'dan cevaplandı + düzeltilmiş
+build yüklendi. Notes'taki "sonuçlar konuma bağlı, Berlin/Londra'da test edin"
+paragrafı bilerek kalmalı (reviewer California'da).
 
-## Proje dosya yapısı (güncel)
-- `Models/DonerPlace.swift` — yer modeli + `formattedDistance`.
-- `ViewModels/PlacesViewModel.swift` — paylaşılan arama state'i (tek sefer).
-- `Services/LocationManager.swift`, `Services/PlacesSearchService.swift`.
-- `Utilities/AppTheme.swift` (marka renkleri), `Utilities/DonerGlyph.swift`
-  (özel döner logosu), `Utilities/DirectionsHelper.swift`.
-- `Views/RootView.swift` (splash + geçiş), `ContentView.swift` (TabView),
-  `MapTabView.swift`, `ListTabView.swift`, `PlaceDetailCard.swift`,
-  `ProfileTabView.swift`.
+v1.0'da olanlar (ilk tasarım listesine ek): onboarding, favoriler (UserDefaults),
+EN/DE/FR yerelleştirme, dark mode + görünüm seçici, gerçek rota mesafesi ve
+varış saati, konum zaman aşımı ekranı, özel app icon (koni logo) ve tab ikonları.
+Metinlerde "döner" değil "doner" (Türkçe karakter yok).
+
+Sonraki sürüm kuralları: build numarası 6+, sürüm 1.0.1 (düzeltme) / 1.1 (özellik).
+
+Olası sonraki adımlar: pin kümeleme, listede arama/filtre, rota çizgisi,
+Overpass/Google Places ile puan ve çalışma saatleri (MapKit vermiyor).
