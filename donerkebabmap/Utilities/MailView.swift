@@ -6,16 +6,16 @@
 import SwiftUI
 import MessageUI
 
-/// Uygulama içi mail yazma penceresi (MFMailComposeViewController sarmalayıcı).
-/// Cihazda mail hesabı tanımlı değilse `canSendMail` false döner; o durumda
-/// çağıran taraf `mailto:` linkine düşer.
+/// In-app mail composer (a wrapper around MFMailComposeViewController).
+/// When no mail account is set up, `canSendMail` returns false and the caller
+/// falls back to a `mailto:` link.
 struct MailView: UIViewControllerRepresentable {
     let recipient: String
     var subject: String = ""
 
     @Environment(\.dismiss) private var dismiss
 
-    /// Cihazda mail gönderilebilir mi (hesap tanımlı mı)?
+    /// Whether this device can send mail (i.e. has an account set up).
     static var canSendMail: Bool { MFMailComposeViewController.canSendMail() }
 
     func makeUIViewController(context: Context) -> MFMailComposeViewController {

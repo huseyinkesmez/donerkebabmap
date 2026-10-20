@@ -15,8 +15,8 @@ struct MapTabView: View {
     @State private var selectedPlace: DonerPlace?
     @State private var hasFocusedOnUser = false
 
-    /// Açılışta haritanın gösterdiği alan (kullanıcı etrafında ~1 km).
-    /// Arama yarıçapı 20 km'de kalır; bu yalnızca görsel zoom.
+    /// Area shown when the map opens (~1 km around the user).
+    /// The search radius stays 20 km; this is only the visual zoom.
     private let initialZoomMeters: Double = 1_000
 
     var body: some View {
@@ -33,7 +33,7 @@ struct MapTabView: View {
                 }
             }
             .mapStyle(.standard(pointsOfInterest: .excludingAll))
-            .tint(.blue) // kullanıcı konum noktası standart mavi kalsın (marka tint'i değil)
+            .tint(.blue) // keep the user location dot standard blue (not the brand tint)
             .mapControls {
                 MapUserLocationButton()
             }
@@ -140,7 +140,7 @@ private struct PlaceMapPin: View {
     }
 }
 
-/// Pinin altındaki, konuma denk gelen aşağı sivri uç.
+/// Downward tip under the pin that marks the exact location.
 private struct PinPointer: Shape {
     func path(in rect: CGRect) -> Path {
         var path = Path()

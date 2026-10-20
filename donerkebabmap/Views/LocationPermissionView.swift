@@ -5,8 +5,8 @@
 
 import SwiftUI
 
-/// Konum izni reddedildiğinde/kısıtlandığında gösterilen bilgilendirme ekranı.
-/// Kullanıcıyı sistem Ayarlar'ına yönlendirir.
+/// Shown when location permission is denied or restricted.
+/// Sends the user to the system Settings.
 struct LocationPermissionView: View {
     @Environment(\.openURL) private var openURL
 

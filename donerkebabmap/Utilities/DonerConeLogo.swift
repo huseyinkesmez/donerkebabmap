@@ -2,20 +2,20 @@
 //  DonerConeLogo.swift
 //  donerkebabmap
 //
-//  Görsel kimlikteki "Kalın Konturlu Dürüm" logosunun SwiftUI'deki karşılığı.
-//  Geometri, tasarımın svg/logo-cone-amber.svg dosyasından birebir alınmıştır
-//  (referans viewBox 200×265). Splash ve profil gibi büyük gösterim yerlerinde
-//  kullanılır.
+//  SwiftUI version of the visual identity's "bold outline wrap" logo.
+//  The geometry is taken one-to-one from the design's svg/logo-cone-amber.svg
+//  (reference viewBox 200×265). Used in large placements such as the splash
+//  screen and the profile.
 //
 
 import SwiftUI
 
 struct DonerConeLogo: View {
-    /// Tek renk siluet için verilir. `nil` ise tam renkli çizilir.
+    /// Set for a single-color silhouette; `nil` draws the full-color logo.
     var tint: Color?
-    /// Üstteki buhar dalgalarını çiz.
+    /// Draw the steam wisps on top.
     var showSteam: Bool
-    /// Tam renkli modda kontur rengi (dark mode'da kırık beyaz verilebilir).
+    /// Outline color in full-color mode (off-white works well in dark mode).
     var outline: Color
 
     init(tint: Color? = nil, showSteam: Bool = true, outline: Color = AppTheme.ink) {
@@ -24,7 +24,7 @@ struct DonerConeLogo: View {
         self.outline = outline
     }
 
-    // Kimlik renkleri
+    // Identity colors
     private static let amber = AppTheme.amber
     private static let cream = AppTheme.cream
     private static let green = Color(red: 0.18, green: 0.62, blue: 0.36) // #2E9E5B
@@ -47,7 +47,7 @@ struct DonerConeLogo: View {
         }
     }
 
-    // MARK: - Silüet
+    // MARK: - Silhouette
 
     private func drawSilhouette(in context: inout GraphicsContext, color: Color) {
         if showSteam {
@@ -57,7 +57,7 @@ struct DonerConeLogo: View {
         context.fill(fillingTopPath(), with: .color(color))
     }
 
-    // MARK: - Tam renkli logo
+    // MARK: - Full-color logo
 
     private func drawFullColor(in context: inout GraphicsContext) {
         if showSteam {
@@ -90,7 +90,7 @@ struct DonerConeLogo: View {
         StrokeStyle(lineWidth: width, lineCap: .round, lineJoin: .round)
     }
 
-    // MARK: - Yollar (referans koordinatlar; koni grubu y+50 kaydırılmıştır)
+    // MARK: - Paths (reference coordinates; the cone group is offset by y+50)
 
     private func steamPath() -> Path {
         var p = Path()

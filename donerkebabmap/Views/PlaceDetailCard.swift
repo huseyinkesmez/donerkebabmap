@@ -43,8 +43,8 @@ struct PlaceDetailCard: View {
         )
         .presentationDetents(detents)
         .presentationDragIndicator(.visible)
-        // Acik arka plan verilmezse sheet yari saydam kalip altindaki
-        // haritayla karisiyor; opak sistem zemini kullan.
+        // Without an explicit background the sheet stays translucent and
+        // blends with the map behind it; use the opaque system background.
         .presentationBackground(Color(.systemBackground))
         .task(id: place.id) {
             await loadTravelTimes()
@@ -66,8 +66,8 @@ struct PlaceDetailCard: View {
 
     private var isRegularWidth: Bool { horizontalSizeClass == .regular }
 
-    /// iPad'de (regular genişlik) sheet ortada sabit boyutlu bir kutu olarak
-    /// açıldığı için kesirli detent içeriği eziyor; orada tam yükseklik kullan.
+    /// On iPad (regular width) the sheet is a fixed-size centered box, so a
+    /// fractional detent squashes the content; use full height there.
     private var detents: Set<PresentationDetent> {
         isRegularWidth ? [.large] : [.fraction(0.55), .large]
     }
@@ -142,8 +142,8 @@ struct PlaceDetailCard: View {
     private var transportPicker: some View {
         Picker("Transport mode", selection: $transportMode) {
             ForEach(TransportMode.allCases) { mode in
-                // Segmented picker yalnizca Text/Image/Label icerigini render
-                // eder; ViewThatFits gibi sarmalayicilar segmentleri bozuyor.
+                // A segmented picker only renders Text/Image/Label content;
+                // wrappers such as ViewThatFits break the segments.
                 Label(mode.titleKey, systemImage: mode.icon)
                     .tag(mode)
             }
@@ -216,8 +216,8 @@ struct PlaceDetailCard: View {
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.large)
-                // Genisligi butonun kendisine veriyoruz: ic cerceveye vermek
-                // .bordered stilinin kendi dolgusuyla toplanip sisiriyordu.
+                // Size the button itself: sizing the inner frame added up with
+                // the .bordered style's own padding and made it bulky.
                 .frame(width: 48, height: 50)
                 .tint(isFavorite ? .red : .gray)
                 .accessibilityLabel(isFavorite ? "Remove from favorites" : "Add to favorites")
@@ -225,8 +225,8 @@ struct PlaceDetailCard: View {
                 Button {
                     showDirectionsOptions = true
                 } label: {
-                    // Dar ekranda/uzun çeviride satır kırmak yerine önce ikonu
-                    // bırakır, gerekirse metni küçültür.
+                    // On narrow screens / long translations, drop the icon first
+                    // and shrink the text if needed, instead of wrapping.
                     ViewThatFits(in: .horizontal) {
                         Label("Get Directions", systemImage: "arrow.triangle.turn.up.right.diamond.fill")
                         Text("Get Directions")
@@ -267,8 +267,8 @@ struct PlaceDetailCard: View {
         }
     }
 
-    /// Rota mesafesi alinabildiyse onu goster: kus ucusu mesafe gercek
-    /// yuruyus/surus mesafesinden belirgin sekilde kisa cikiyor.
+    /// Show the route distance when available: the straight-line distance
+    /// is noticeably shorter than the real walking/driving distance.
     private var displayedDistance: String? {
         if let meters = selectedEstimate?.distanceInMeters {
             return DistanceFormatter.string(fromMeters: meters)
@@ -318,8 +318,8 @@ struct PlaceDetailCard: View {
     }
 }
 
-/// `calculateETA()` yanıtından tutulan bilgiler. Aynı çağrı hem süreyi hem
-/// gerçek rota mesafesini hem de tahmini varış saatini döndürüyor.
+/// Values kept from the `calculateETA()` response. The same call returns the
+/// travel time, the real route distance and the expected arrival time.
 private struct TravelEstimate {
     let travelTime: TimeInterval
     let distanceInMeters: CLLocationDistance

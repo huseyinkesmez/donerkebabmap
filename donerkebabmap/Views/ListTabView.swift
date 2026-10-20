@@ -38,9 +38,9 @@ struct ListTabView: View {
                                 .font(.footnote.weight(.semibold))
                                 .contentTransition(.numericText())
                         }
-                        // Toolbar ogeleri iOS'un kendi materyalini kullaniyor;
-                        // ustune renkli kapsul koymak bulanik bir leke gibi
-                        // duruyordu. Native gorunum: arka plansiz, notr renk.
+                        // Toolbar items already sit on the system material; a tinted
+                        // capsule on top looked like a blurry smudge on device.
+                        // Native look: no background, neutral color.
                         .foregroundStyle(.secondary)
                     }
                 }
@@ -98,11 +98,11 @@ private struct PlaceRow: View {
     let place: DonerPlace
     let isFavorite: Bool
 
-    /// Mesafeye göre renk: yakın = mavi, uzaklaştıkça (~5 km ve üstü) kırmızıya
-    /// döner. Aradaki geçiş camgöbeği/yeşil/turuncu üzerinden akar.
+    /// Color by distance: near = blue, shifting to red as it gets farther (~5 km+),
+    /// passing through cyan/green/orange in between.
     static func distanceColor(forMeters meters: Double) -> Color {
         let t = min(max(meters / 5000, 0), 1) // 0 km -> 0, 5 km+ -> 1
-        let hue = 0.58 * (1 - t)              // 0.58 (mavi) -> 0.0 (kırmızı)
+        let hue = 0.58 * (1 - t)              // 0.58 (blue) -> 0.0 (red)
         return Color(hue: hue, saturation: 0.85, brightness: 0.80)
     }
 

@@ -1,7 +1,8 @@
 # App Review Information — Notes
 
-App Store Connect → App Review Information → Notes alanına yapıştırılacak metin.
-Guideline 2.1 (Information Needed) yanıtı. Her yeni gönderimde de aynı metin kalmalı.
+Text for App Store Connect → App Review Information → Notes.
+Written as the reply to Guideline 2.1 (Information Needed); keep it for future submissions.
+The plain-text version under 4000 characters is docs/app-review-notes.txt.
 
 ---
 

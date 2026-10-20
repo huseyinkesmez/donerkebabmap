@@ -2,15 +2,15 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<!-- Uygulama kullanıcıyı takip etmiyor. -->
+	<!-- The app does not track users. -->
 	<key>NSPrivacyTracking</key>
 	<false/>
 	<key>NSPrivacyTrackingDomains</key>
 	<array/>
-	<!-- Hiçbir veri toplanmıyor / cihazdan dışarı gönderilmiyor (backend yok). -->
+	<!-- No data is collected or sent off the device (no backend). -->
 	<key>NSPrivacyCollectedDataTypes</key>
 	<array/>
-	<!-- "Required reason" API'leri: yalnızca UserDefaults (favoriler + ayarlar). -->
+	<!-- "Required reason" APIs: UserDefaults only (favorites + settings). -->
 	<key>NSPrivacyAccessedAPITypes</key>
 	<array>
 		<dict>
@@ -18,7 +18,7 @@
 			<string>NSPrivacyAccessedAPICategoryUserDefaults</string>
 			<key>NSPrivacyAccessedAPITypeReasons</key>
 			<array>
-				<!-- CA92.1: Yalnızca uygulamanın kendisine erişilebilir verileri okuyup yazmak. -->
+				<!-- CA92.1: Read/write data accessible only to the app itself. -->
 				<string>CA92.1</string>
 			</array>
 		</dict>

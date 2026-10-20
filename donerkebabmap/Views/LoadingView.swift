@@ -2,8 +2,8 @@
 //  LoadingView.swift
 //  donerkebabmap
 //
-//  Görsel kimlikteki Loading.dc.html'in SwiftUI karşılığı: süzülen döner
-//  logosu + genişleyen halkalar + puls noktaları.
+//  SwiftUI version of the visual identity's Loading.dc.html: a floating doner
+//  logo + expanding rings + pulsing dots.
 //
 
 import SwiftUI

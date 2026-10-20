@@ -11,32 +11,32 @@ struct DonerPlace: Identifiable, Equatable {
     let name: String
     let coordinate: CLLocationCoordinate2D
     let address: String
-    /// Kullanıcıya mesafe. Konum bilinmiyorsa (ör. profildeki favori) nil olur.
+    /// Distance to the user. Nil when the location is unknown (e.g. a favorite opened from the profile).
     let distanceInMeters: Double?
-    /// Yer puanı (ör. 4.3). MapKit bu veriyi sağlamıyor; şimdilik nil.
-    /// İleride Google Places entegrasyonuyla doldurulacak.
+    /// Place rating (e.g. 4.3). MapKit does not provide this, so it is nil for now.
+    /// To be populated later via a Google Places integration.
     let rating: Double?
     let mapItem: MKMapItem
 
-    /// Kuş uçuşu mesafenin okunabilir hâli; mesafe bilinmiyorsa nil.
-    /// Detay kartında, rota mesafesi alınabildiyse onun yerine o kullanılır.
+    /// Human-readable straight-line distance; nil when the distance is unknown.
+    /// The detail card shows the route distance instead when it is available.
     var formattedDistance: String? {
         guard let distanceInMeters else { return nil }
         return DistanceFormatter.string(fromMeters: distanceInMeters)
     }
 
-    /// Aranabilir telefon numarası (varsa).
+    /// Callable phone number, if any.
     var phoneNumber: String? {
         guard let phone = mapItem.phoneNumber, !phone.isEmpty else { return nil }
         return phone
     }
 
-    /// İşletmenin web sitesi (varsa).
+    /// The business website, if any.
     var website: URL? {
         mapItem.url
     }
 
-    /// POI kategorisinin okunabilir/çevrilebilir adı (varsa).
+    /// Readable, localizable name of the POI category, if any.
     var categoryName: LocalizedStringResource? {
         switch mapItem.pointOfInterestCategory {
         case .restaurant: "Restaurant"
@@ -47,7 +47,7 @@ struct DonerPlace: Identifiable, Equatable {
         }
     }
 
-    /// Paylaşım için Apple Haritalar bağlantısı.
+    /// Apple Maps link used for sharing.
     var shareURL: URL? {
         var components = URLComponents(string: "https://maps.apple.com/")
         components?.queryItems = [
@@ -72,8 +72,8 @@ struct DonerPlace: Identifiable, Equatable {
 }
 
 extension DonerPlace {
-    /// Kaydedilmiş bir favoriden `DonerPlace` üretir. Mesafe, kullanıcı konumu
-    /// verilmişse hesaplanır; yoksa nil kalır (mesafe satırı gizlenir).
+    /// Builds a `DonerPlace` from a saved favorite. The distance is computed when
+    /// a user location is given; otherwise it stays nil (the distance row is hidden).
     init(favorite: FavoritePlace, userLocation: CLLocationCoordinate2D?) {
         let coordinate = CLLocationCoordinate2D(
             latitude: favorite.latitude,

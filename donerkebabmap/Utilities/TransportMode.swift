@@ -6,8 +6,8 @@
 import MapKit
 import SwiftUI
 
-/// Kullanıcının seçtiği ulaşım türü. Hem tahmini süre (ETA) hesabında hem de
-/// harita uygulamalarına yol tarifi açarken kullanılır.
+/// The user's chosen transport mode. Used both for the ETA calculation and
+/// when handing directions off to map apps.
 enum TransportMode: String, CaseIterable, Identifiable {
     case driving
     case walking
@@ -35,7 +35,7 @@ enum TransportMode: String, CaseIterable, Identifiable {
         }
     }
 
-    /// Apple Haritalar `launchOptions` için mod anahtarı.
+    /// Mode key for Apple Maps `launchOptions`.
     var appleMapsMode: String {
         switch self {
         case .driving: MKLaunchOptionsDirectionsModeDriving
@@ -43,7 +43,7 @@ enum TransportMode: String, CaseIterable, Identifiable {
         }
     }
 
-    /// Google Haritalar URL'i için `directionsmode` / `travelmode` değeri.
+    /// `directionsmode` / `travelmode` value for the Google Maps URL.
     var googleMapsMode: String {
         switch self {
         case .driving: "driving"

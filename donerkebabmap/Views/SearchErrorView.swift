@@ -5,8 +5,8 @@
 
 import SwiftUI
 
-/// Yer araması başarısız olduğunda (ör. internet yok) gösterilen,
-/// "Tekrar Dene" butonlu bilgilendirme ekranı.
+/// Shown when the place search fails (e.g. no internet), with a
+/// "Try Again" button.
 struct SearchErrorView: View {
     let retry: () -> Void
 

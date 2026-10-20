@@ -1,50 +1,59 @@
-# Doner Kebab Map — Proje Context
+# Doner Kebab Map — Project Context
 
-## Bu proje
-Yakındaki doner/kebab/gyro yerlerini haritada gösteren iOS uygulaması
-(Swift + SwiftUI, MVVM). **v1.0 App Store'da yayında** (build 5, git tag `v1.0`).
+## About
+iOS app (Swift + SwiftUI, MVVM) that shows doner/kebab/gyro places near the
+user on a map. **v1.0 is live on the App Store** (build 5, git tag `v1.0`).
 
-Geliştirici QA engineer, yazılım bilgisi sınırlı: adım adım, basit ve net
-açıkla. **Konuşma dili Türkçe.**
+The developer is a QA engineer with limited software background: explain step
+by step, simply and clearly.
 
-## Kurallar
-- Uygulama içi metinlerde "döner" değil **"doner"** (Türkçe karakter yok).
-  Sadece `PlacesSearchService` arama anahtar kelimeleri ö'lü kalabilir.
-- Varsayılan dil İngilizce; Almanca (samimi "du") ve Fransızca ("vous") çevirileri
-  `Localizable.xcstrings`'te. Yeni metin eklerken DE/FR çevirisini de ekle.
-- Renkler `AppTheme`'de: dolgu/buton için `primary`, tonlu zemin üstündeki
-  metin/ikon için `primaryAccent` (light/dark'ta okunaklı). Logo amber.
-- Segmented `Picker` içine `ViewThatFits` vb. sarmalayıcı koyma — bozuluyor.
-- Uygulama içi logo: büyük yerlerde (splash, profil) `DonerConeLogo`,
-  küçük işaretlerde (pin, liste, kart) `DonerGlyph`.
-- Commit/push sadece istenince.
+## Language
+- **Talk to the user in Turkish.**
+- **Everything written to files is English**: code, comments, doc comments,
+  log messages, commit messages, docs, CLAUDE.md, skills. No Turkish in the repo.
+- User-facing app text: English source + DE/FR translations (see below).
 
-## Mimari
-- **Backend yok.** Veri: Apple MapKit `MKLocalSearch` (ücretsiz, key yok),
-  20 km yarıçap, çoklu anahtar kelime + dedupe (aynı isim ancak <250 m ise aynı yer).
-- Konum tek seferlik alınır; 15 sn'de gelmezse "Location Unavailable" ekranı.
-- Favoriler `FavoriteStore` ile UserDefaults'ta (isim + <30 m koordinat eşleşmesi).
-- Ana arayüz (`ContentView`) onboarding bitmeden mount edilmez — aksi halde
-  cihazda dokunuşlar düşüyordu.
-- MapKit **vermiyor**: puan, yorum, çalışma saati, fotoğraf. (`rating` şimdilik nil.)
+## Rules
+- In app text write **"doner"**, never "döner" (no Turkish characters). Only the
+  search keywords in `PlacesSearchService` intentionally keep "döner".
+- Default language is English; German (informal "du") and French (formal "vous")
+  live in `Localizable.xcstrings`. Add DE/FR whenever you add a new string.
+- Colors live in `AppTheme`: `primary` for fills/buttons, `primaryAccent` for
+  text/icons on tinted backgrounds (readable in light and dark). Logo is amber.
+- Never wrap segmented `Picker` content in `ViewThatFits` or similar — it breaks.
+- Don't put tinted backgrounds on toolbar items (looks like a smudge on device).
+- Logos: `DonerConeLogo` for large placements (splash, profile), `DonerGlyph`
+  for small marks (pins, list rows, cards).
+- Commit/push only when asked.
 
-## Dosya yapısı
+## Architecture
+- **No backend.** Data: Apple MapKit `MKLocalSearch` (free, no key), 20 km
+  radius, multiple keywords + dedupe (same name counts as one place only < 250 m).
+- Location is fetched once; if none arrives in 15 s a "Location Unavailable" screen shows.
+- Favorites via `FavoriteStore` in UserDefaults (name + < 30 m coordinate match).
+- `ContentView` is not mounted until onboarding finishes — otherwise taps were
+  dropped on device.
+- MapKit does **not** provide ratings, reviews, opening hours or photos
+  (`rating` is nil for now).
+
+## Layout
 - `Models/` — `DonerPlace`, `FavoritePlace`
-- `ViewModels/PlacesViewModel` — paylaşılan arama state'i
+- `ViewModels/PlacesViewModel` — shared search state
 - `Services/` — `LocationManager`, `PlacesSearchService`, `FavoriteStore`
 - `Utilities/` — `AppTheme`, `DonerConeLogo`, `DonerGlyph`, `DistanceFormatter`,
   `DirectionsHelper`, `TransportMode`, `AppearanceMode`, `AdaptiveText`, `MailView`
 - `Views/` — `RootView` (splash + onboarding), `MapTabView`, `ListTabView`,
   `PlaceDetailCard`, `ProfileTabView` ("More"), `OnboardingView`, `LoadingView`,
-  hata/izin ekranları
+  error/permission screens
 - `docs/` — `privacy-policy.html`, `support.html`, `app-review-notes.txt`
+- `.claude/skills/release/` — `/release` skill for App Store releases
 
-## Yayın
-- Sonraki yüklemede build numarası **6+**, sürüm 1.0.1 (düzeltme) / 1.1 (özellik).
-- App Review Notes: `docs/app-review-notes.txt` (<4000 karakter). İçindeki
-  "sonuçlar konuma bağlı, büyük bir şehirde test edin" paragrafı kalmalı.
-- Çalıştırma: iOS simülatöründe önce sanal konum ayarla (ör. Berlin 52.52,13.405).
+## Releasing
+- Use `/release`. Next build number is **6+**; version 1.0.1 (fix) / 1.1 (feature).
+- App Review Notes: `docs/app-review-notes.txt` (< 4000 chars). Keep the
+  "results depend on location, test in a big city" paragraph.
+- Running in the simulator: set a simulated location first (e.g. Berlin 52.52, 13.405).
 
-## Olası sonraki adımlar
-Pin kümeleme, listede arama/filtre, rota çizgisi, Overpass / Google Places ile
-puan ve çalışma saatleri.
+## Possible next steps
+Pin clustering, list search/filter, route line, ratings and opening hours via
+Overpass / Google Places.

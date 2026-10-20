@@ -5,8 +5,8 @@
 
 import SwiftUI
 
-/// İlk açılışta gösterilen, atlanabilir (Skip) 3 sayfalık tanıtım akışı.
-/// Bittiğinde `onFinish` çağrılır; RootView bunu kalıcı olarak işaretler.
+/// Three-page, skippable introduction shown on first launch.
+/// Calls `onFinish` when done; RootView persists that it was seen.
 struct OnboardingView: View {
     let onFinish: () -> Void
 
@@ -78,8 +78,8 @@ struct OnboardingView: View {
             if isLastPage {
                 onFinish()
             } else {
-                // .page stilindeki TabView geçişi kendisi animasyonluyor;
-                // ayrıca withAnimation sarmak animasyonları çakıştırıyor.
+                // A .page-style TabView animates the transition itself; also
+                // wrapping it in withAnimation makes the animations conflict.
                 page += 1
             }
         } label: {
@@ -94,11 +94,11 @@ struct OnboardingView: View {
     }
 }
 
-// MARK: - Sayfa modeli & tek sayfa görünümü
+// MARK: - Page model & single page view
 
 private struct OnboardingPage: Identifiable {
     let id = UUID()
-    /// SF Symbol adı; nil ise marka logosu (DonerConeLogo) gösterilir.
+    /// SF Symbol name; nil shows the brand logo (DonerConeLogo).
     let symbol: String?
     let title: LocalizedStringKey
     let message: LocalizedStringKey

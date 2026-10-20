@@ -6,7 +6,7 @@
 import CoreLocation
 import MapKit
 
-/// Tüm anahtar kelime aramaları (ör. internet yokken) başarısız olduğunda atılır.
+/// Thrown when every keyword search fails (e.g. no internet connection).
 struct SearchFailedError: Error {}
 
 final class PlacesSearchService {
@@ -39,11 +39,11 @@ final class PlacesSearchService {
         "rotisserie kebab",
         "kebab stand"
     ]
-    /// Ayni isimli iki kayit ancak bu mesafeden yakinsa ayni yer sayilir.
-    /// Daha uzaktakiler ayni zincirin farkli subeleridir ve korunur.
+    /// Two results with the same name count as one place only within this distance.
+    /// Farther apart, they are different branches of the same chain and are kept.
     private let sameNameDistanceThreshold: Double = 250
-    /// Isimler farkli olsa bile bu kadar yakin iki kayit ayni POI kabul edilir
-    /// (ayni dukkan, farkli anahtar kelimede biraz farkli yazilmis olabilir).
+    /// Two results this close are treated as the same POI even if the names differ
+    /// (the same shop may be spelled slightly differently across keywords).
     private let sameSpotDistanceThreshold: Double = 25
 
     func search(
@@ -53,14 +53,14 @@ final class PlacesSearchService {
         let authorizationStatus = CLLocationManager().authorizationStatus
         switch authorizationStatus {
         case .denied, .restricted:
-            print("[PlacesSearchService] Konum izni yok: \(authorizationStatus.rawValue)")
+            print("[PlacesSearchService] No location permission: \(authorizationStatus.rawValue)")
             return []
         default:
             break
         }
 
         guard CLLocationCoordinate2DIsValid(coordinate) else {
-            print("[PlacesSearchService] Geçersiz koordinat: \(coordinate)")
+            print("[PlacesSearchService] Invalid coordinate: \(coordinate)")
             return []
         }
 
@@ -82,13 +82,13 @@ final class PlacesSearchService {
             }
 
             for await items in group {
-                guard let items else { continue } // nil = bu arama hata verdi
+                guard let items else { continue } // nil = this search failed
                 anySucceeded = true
                 mapItems.append(contentsOf: items)
             }
         }
 
-        // Hiçbir arama başarılı olmadıysa (ör. internet yok) hatayı yukarı taşı.
+        // If no search succeeded (e.g. no internet), propagate the error.
         guard anySucceeded else { throw SearchFailedError() }
 
         let uniqueItems = deduplicate(mapItems)
@@ -119,8 +119,8 @@ final class PlacesSearchService {
         }
     }
 
-    /// Tek bir anahtar kelime araması. Hata olursa `nil` döner (boş dizi =
-    /// başarılı ama sonuç yok; nil = arama başarısız, ör. ağ hatası).
+    /// A single keyword search. Returns `nil` on failure (empty array =
+    /// succeeded with no results; nil = the search failed, e.g. a network error).
     private func performSearch(keyword: String, region: MKCoordinateRegion) async -> [MKMapItem]? {
         let request = MKLocalSearch.Request()
         request.naturalLanguageQuery = keyword
@@ -133,18 +133,18 @@ final class PlacesSearchService {
             let response = try await search.start()
             return response.mapItems
         } catch let error as MKError where error.code == .placemarkNotFound {
-            // Bağlantı var ama bu kelime için sonuç yok: başarılı-ama-boş.
+            // Connected, but no results for this keyword: success with no items.
             return []
         } catch {
-            // Gerçek hata (ör. internet yok): başarısız.
-            print("[PlacesSearchService] '\(keyword)' araması başarısız: \(error.localizedDescription)")
+            // A real error (e.g. no internet): failure.
+            print("[PlacesSearchService] '\(keyword)' search failed: \(error.localizedDescription)")
             return nil
         }
     }
 
     private func deduplicate(_ mapItems: [MKMapItem]) -> [MKMapItem] {
-        // Konumlari bir kez hesaplayip yaniyla tasiyoruz; aksi halde her
-        // karsilastirmada yeniden CLLocation uretiliyordu.
+        // Compute each location once and carry it along; otherwise a new
+        // CLLocation was created on every comparison.
         var unique: [(item: MKMapItem, name: String, location: CLLocation)] = []
 
         for mapItem in mapItems {
@@ -173,7 +173,7 @@ final class PlacesSearchService {
     ) -> Bool {
         let distance = lhs.location.distance(from: rhs.location)
 
-        // Ayni isim TEK BASINA yeterli degil: farkli subeler ayni adi tasiyabilir.
+        // The same name ALONE is not enough: different branches can share a name.
         if !lhs.name.isEmpty, lhs.name == rhs.name {
             return distance < sameNameDistanceThreshold
         }

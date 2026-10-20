@@ -10,7 +10,7 @@ import Combine
 final class PlacesViewModel: ObservableObject {
     @Published private(set) var places: [DonerPlace] = []
     @Published private(set) var isLoading = false
-    /// Son arama (ör. internet yokken) başarısız olduysa true.
+    /// True when the last search failed (e.g. no internet connection).
     @Published private(set) var loadFailed = false
 
     let searchRadius: Double
@@ -22,15 +22,15 @@ final class PlacesViewModel: ObservableObject {
         self.searchRadius = searchRadius
     }
 
-    /// İlk geçerli konumda bir kez arama yapar; sonraki konum güncellemelerinde
-    /// tekrar tetiklenmez..
+    /// Searches once, on the first valid location; later location updates do not
+    /// trigger it again.
     func loadPlacesIfNeeded(around coordinate: CLLocationCoordinate2D) {
         guard !hasSearched else { return }
         hasSearched = true
         Task { await performSearch(around: coordinate) }
     }
 
-    /// Kullanıcının elle yenilemesi için aramayı yeniden çalıştırır.
+    /// Runs the search again, for a manual refresh.
     func refresh(around coordinate: CLLocationCoordinate2D) async {
         await performSearch(around: coordinate)
     }

@@ -5,8 +5,8 @@
 
 import SwiftUI
 
-/// Kullanıcının seçtiği görünüm tercihi. `@AppStorage` ile kalıcı saklanır ve
-/// kökte `.preferredColorScheme` olarak uygulanır.
+/// The user's appearance preference. Persisted with `@AppStorage` and applied
+/// at the root as `.preferredColorScheme`.
 enum AppearanceMode: String, CaseIterable, Identifiable {
     case system
     case light
@@ -14,7 +14,7 @@ enum AppearanceMode: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
-    /// SwiftUI'ye verilecek renk şeması; `system` için nil (sistemi takip et).
+    /// Color scheme passed to SwiftUI; nil for `system` (follow the system).
     var colorScheme: ColorScheme? {
         switch self {
         case .system: nil

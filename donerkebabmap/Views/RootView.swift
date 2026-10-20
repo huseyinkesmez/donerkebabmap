@@ -5,8 +5,8 @@
 
 import SwiftUI
 
-/// Uygulama açılışında kısa bir marka splash ekranı gösterip ardından
-/// ana içeriğe geçer.
+/// Shows a short branded splash screen on launch, then switches to the
+/// main content.
 struct RootView: View {
     @State private var isShowingSplash = true
     @AppStorage("appearanceMode") private var appearanceRaw = AppearanceMode.system.rawValue
@@ -19,9 +19,9 @@ struct RootView: View {
 
     var body: some View {
         ZStack {
-            // Onboarding bitmeden ana arayüzü kurma: aksi halde konum izni
-            // istemi, 20 km'lik arama ve harita/pin çizimi onboarding
-            // görünürken ana thread'i meşgul edip dokunuşları düşürüyor.
+            // Don't build the main UI until onboarding is done: otherwise the
+            // location prompt, the 20 km search and map/pin rendering keep the
+            // main thread busy during onboarding and taps get dropped.
             if hasSeenOnboarding {
                 ContentView()
                     .environmentObject(favoriteStore)

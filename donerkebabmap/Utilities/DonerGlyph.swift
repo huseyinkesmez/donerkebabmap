@@ -5,8 +5,8 @@
 
 import SwiftUI
 
-/// Doner şişini (dikey şiş + et kütlesi) temsil eden, ölçeklenebilir özel ikon.
-/// Pin, splash ve kartlarda marka logosu olarak kullanılır.
+/// Scalable custom icon of a doner spit (vertical skewer + meat cone).
+/// Used as the brand mark on pins, list rows and cards.
 struct DonerGlyph: View {
     private let meat: AnyShapeStyle
     private let spit: Color
@@ -22,18 +22,18 @@ struct DonerGlyph: View {
             let h = geo.size.height
 
             ZStack {
-                // Şiş (üstte ve altta et kütlesinin dışına taşar)
+                // Skewer (sticks out above and below the meat)
                 Capsule()
                     .fill(spit)
                     .frame(width: max(1.5, w * 0.07), height: h * 0.98)
 
-                // Üstteki tutamak topuzu
+                // Handle knob on top
                 Circle()
                     .fill(spit)
                     .frame(width: w * 0.18, height: w * 0.18)
                     .offset(y: -h * 0.45)
 
-                // Et kütlesi (fıçı şeklinde)
+                // Meat cone (barrel-shaped)
                 DonerMeatShape()
                     .fill(meat)
                     .frame(width: w * 0.72, height: h * 0.72)
@@ -42,7 +42,7 @@ struct DonerGlyph: View {
         }
     }
 
-    /// Kızarmış et görünümü için sıcak kahverengi degrade.
+    /// Warm brown gradient for a roasted-meat look.
     static let meatGradient = LinearGradient(
         colors: [
             Color(red: 0.80, green: 0.53, blue: 0.30),
@@ -54,7 +54,7 @@ struct DonerGlyph: View {
     )
 }
 
-/// Donerin et kütlesinin silueti: ortası şişkin, altı sivri fıçı.
+/// Silhouette of the doner meat: a barrel that bulges in the middle and tapers to a point.
 private struct DonerMeatShape: Shape {
     func path(in rect: CGRect) -> Path {
         let cx = rect.midX

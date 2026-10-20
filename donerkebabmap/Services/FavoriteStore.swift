@@ -7,14 +7,14 @@ import Combine
 import CoreLocation
 import Foundation
 
-/// Favori yerleri UserDefaults'ta (JSON) tutan paylaşılan store. Her
-/// değişiklikte otomatik kaydeder, init'te yükler. Backend yok.
+/// Shared store that keeps favorite places in UserDefaults (as JSON). Saves
+/// automatically on every change and loads on init. No backend.
 @MainActor
 final class FavoriteStore: ObservableObject {
     @Published private(set) var favorites: [FavoritePlace] = []
 
     private let defaultsKey = "favorite_places"
-    /// Aramalar arasında koordinat biraz kayabildiği için eşleşme toleransı.
+    /// Match tolerance, since coordinates can drift slightly between searches.
     private let matchThresholdMeters: CLLocationDistance = 30
 
     init() {
@@ -25,7 +25,7 @@ final class FavoriteStore: ObservableObject {
         favorites.contains { matches($0, place) }
     }
 
-    /// Favori durumunu tersine çevirir (ekle/çıkar).
+    /// Toggles the favorite state (add/remove).
     func toggle(_ place: DonerPlace) {
         if let index = favorites.firstIndex(where: { matches($0, place) }) {
             favorites.remove(at: index)
@@ -49,7 +49,7 @@ final class FavoriteStore: ObservableObject {
         save()
     }
 
-    // MARK: - Eşleştirme
+    // MARK: - Matching
 
     private func matches(_ favorite: FavoritePlace, _ place: DonerPlace) -> Bool {
         guard favorite.name == place.name else { return false }
@@ -58,7 +58,7 @@ final class FavoriteStore: ObservableObject {
         return a.distance(from: b) < matchThresholdMeters
     }
 
-    // MARK: - Kalıcılık
+    // MARK: - Persistence
 
     private func load() {
         guard

@@ -5,9 +5,9 @@
 
 import SwiftUI
 
-/// Buton/etiket metinlerinin dar ekranda, uzun çevirilerde (DE/FR) veya büyük
-/// Dynamic Type boyutlarında satır kırmak/kırpılmak yerine sığacak kadar
-/// küçülmesini sağlar.
+/// Lets button/label text shrink to fit instead of wrapping or clipping on
+/// narrow screens, with long translations (DE/FR), or at large Dynamic Type
+/// sizes.
 private struct AdaptiveTextModifier: ViewModifier {
     let minimumScale: CGFloat
 
@@ -20,7 +20,7 @@ private struct AdaptiveTextModifier: ViewModifier {
 }
 
 extension View {
-    /// Tek satıra sığdırır; gerekirse metni `minimumScale` oranına kadar küçültür.
+    /// Keeps text on one line, scaling it down to `minimumScale` if needed.
     func adaptiveText(minimumScale: CGFloat = 0.75) -> some View {
         modifier(AdaptiveTextModifier(minimumScale: minimumScale))
     }

@@ -6,11 +6,11 @@
 import CoreLocation
 import Foundation
 
-/// Mesafeyi kullanıcının bölgesine göre biçimlendirir: metrik bölgelerde
-/// 1 km altında "300 m", üstünde "1,2 km"; ABD gibi imperial bölgelerde
-/// otomatik olarak feet/mil kullanılır.
+/// Formats a distance for the user's region: in metric regions "300 m" below
+/// 1 km and "1.2 km" above; imperial regions such as the US automatically
+/// get feet/miles.
 enum DistanceFormatter {
-    /// 1 km altı: ondalık gösterme ("300 m").
+    /// Below 1 km: no decimals ("300 m").
     private static let coarse: MeasurementFormatter = {
         let formatter = MeasurementFormatter()
         formatter.unitOptions = .naturalScale
@@ -19,7 +19,7 @@ enum DistanceFormatter {
         return formatter
     }()
 
-    /// 1 km ve üstü: tek ondalık ("1,2 km").
+    /// 1 km and above: one decimal ("1.2 km").
     private static let fine: MeasurementFormatter = {
         let formatter = MeasurementFormatter()
         formatter.unitOptions = .naturalScale

@@ -24,7 +24,7 @@ xcuserdata/
 .build/
 .swiftpm/
 
-# CocoaPods / Carthage (kullanılmıyorsa da zararsız)
+# CocoaPods / Carthage (harmless even if unused)
 Pods/
 Carthage/Build/
 
@@ -32,5 +32,5 @@ Carthage/Build/
 fastlane/report.xml
 fastlane/screenshots
 
-# App Store pazarlama görselleri (repo dışı)
+# App Store marketing images (kept out of the repo)
 appstore-screenshots/

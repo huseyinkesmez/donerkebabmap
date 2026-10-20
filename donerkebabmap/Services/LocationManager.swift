@@ -10,8 +10,8 @@ import CoreLocation
 final class LocationManager: NSObject, ObservableObject {
     @Published var userLocation: CLLocationCoordinate2D?
     @Published var authorizationStatus: CLAuthorizationStatus
-    /// İzin verildiği hâlde makul sürede konum alınamadıysa true olur; arayüz
-    /// sonsuz "yükleniyor" yerine tekrar dene seçeneği gösterir.
+    /// True when permission is granted but no location arrives in reasonable time;
+    /// the UI then offers a retry instead of loading forever.
     @Published private(set) var locationTimedOut = false
 
     private let locationManager = CLLocationManager()
@@ -22,14 +22,14 @@ final class LocationManager: NSObject, ObservableObject {
         authorizationStatus = locationManager.authorizationStatus
         super.init()
         locationManager.delegate = self
-        // Yakındaki dükkânları listelemek için yüz metre hassasiyet fazlasıyla
-        // yeterli; en yüksek hassasiyet gereksiz pil tüketiyordu.
+        // Hundred-meter accuracy is plenty for listing nearby shops; best
+        // accuracy was draining battery for no benefit.
         locationManager.desiredAccuracy = kCLLocationAccuracyHundredMeters
         locationManager.requestWhenInUseAuthorization()
         startUpdatingLocationIfAuthorized()
     }
 
-    /// Konum alınamadığında kullanıcının tekrar denemesi için.
+    /// Lets the user retry after the location could not be determined.
     func retryLocation() {
         locationTimedOut = false
         startUpdatingLocationIfAuthorized()
@@ -66,9 +66,9 @@ final class LocationManager: NSObject, ObservableObject {
         userLocation = location.coordinate
         locationTimedOut = false
         cancelTimeoutCountdown()
-        // Uygulama konumu tek sefer kullanıyor (arama + haritayı ortalama);
-        // sürekli takip pil tüketirdi. Haritadaki mavi nokta MapKit'in kendi
-        // konum servisiyle çalışmaya devam eder.
+        // The app needs the location only once (search + centering the map);
+        // continuous tracking would drain battery. The blue dot on the map keeps
+        // working through MapKit's own location service.
         locationManager.stopUpdatingLocation()
     }
 }
@@ -90,9 +90,9 @@ extension LocationManager: CLLocationManagerDelegate {
 
     nonisolated func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
         if let clError = error as? CLError, clError.code == .locationUnknown {
-            // Konum geçici olarak belirlenemedi; sistem yeniden denemeye devam eder.
+            // Location temporarily unknown; the system keeps retrying.
             return
         }
-        print("[LocationManager] Konum güncellemesi başarısız: \(error.localizedDescription)")
+        print("[LocationManager] Location update failed: \(error.localizedDescription)")
     }
 }

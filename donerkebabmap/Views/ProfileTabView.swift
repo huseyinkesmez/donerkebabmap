@@ -7,7 +7,7 @@ import SwiftUI
 import UIKit
 
 struct ProfileTabView: View {
-    /// Favoriler listesinde doğrudan kaç tane gösterilsin; üstü "Show all"a gider.
+    /// How many favorites to show inline; the rest are under "Show all".
     private static let previewFavoriteCount = 3
 
     private let contactEmail = "hsynkesmez97@gmail.com"
@@ -126,16 +126,16 @@ struct ProfileTabView: View {
         Array(favoriteStore.favorites.prefix(Self.previewFavoriteCount))
     }
 
-    /// Mail hesabı tanımlıysa uygulama içi yazma penceresini açar; değilse
-    /// (ör. simülatörde hesap yoksa) sistemin `mailto:` akışına düşer.
+    /// Opens the in-app composer when a mail account is set up; otherwise
+    /// (e.g. no account on the simulator) falls back to the system `mailto:` flow.
     private func contactByEmail() {
         if MailView.canSendMail {
             isShowingMail = true
             return
         }
 
-        // Mail hesabı yoksa mailto:'yu dene; onu da açacak bir uygulama
-        // yoksa (ör. simülatör) adresi gösteren uyarıya düş.
+        // No mail account: try mailto:; if no app can open that either
+        // (e.g. the simulator), fall back to an alert showing the address.
         guard let url = URL(string: "mailto:\(contactEmail)") else {
             isShowingMailFallback = true
             return
@@ -183,8 +183,8 @@ struct ProfileTabView: View {
     }
 }
 
-/// Tüm favorileri gösteren, "Show all"dan açılan alt sayfa. Profildeki
-/// NavigationStack'in içine push edilir.
+/// Page listing all favorites, opened from "Show all". Pushed onto the
+/// profile's NavigationStack.
 struct AllFavoritesView: View {
     @EnvironmentObject private var favoriteStore: FavoriteStore
     @EnvironmentObject private var locationManager: LocationManager

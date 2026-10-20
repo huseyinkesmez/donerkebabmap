@@ -5,8 +5,8 @@
 
 import SwiftUI
 
-/// İzin verilmiş olmasına rağmen konum alınamadığında (ör. kapalı mekan,
-/// konum servisleri kapalı) gösterilir. Sonsuz "yükleniyor" yerine çıkış yolu.
+/// Shown when permission is granted but no location could be determined
+/// (e.g. indoors, Location Services off). A way out instead of loading forever.
 struct LocationUnavailableView: View {
     let retry: () -> Void
 
