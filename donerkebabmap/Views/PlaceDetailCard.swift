@@ -17,6 +17,7 @@ struct PlaceDetailCard: View {
     @State private var transportMode: TransportMode = .driving
     @State private var drivingEstimate: TravelEstimate?
     @State private var walkingEstimate: TravelEstimate?
+    @State private var detent: PresentationDetent = .fraction(0.55)
 
     var body: some View {
         VStack(spacing: 0) {
@@ -41,13 +42,25 @@ struct PlaceDetailCard: View {
             minWidth: isRegularWidth ? 540 : nil,
             minHeight: isRegularWidth ? 720 : nil
         )
-        .presentationDetents(detents)
+        .presentationDetents(detents, selection: $detent)
         .presentationDragIndicator(.visible)
+        // At the medium height, keep the content behind usable and undimmed, so
+        // the highlighted pin stays visible and another pin can be tapped.
+        .presentationBackgroundInteraction(.enabled(upThrough: .fraction(0.55)))
         // Without an explicit background the sheet stays translucent and
         // blends with the map behind it; use the opaque system background.
         .presentationBackground(Color(.systemBackground))
+        .onAppear { detent = defaultDetent }
         .task(id: place.id) {
             await loadTravelTimes()
+        }
+        // While the sheet is open, tapping another pin swaps the place in the
+        // same sheet. Reset per-place state so nothing from the previous place
+        // lingers, and go back to the medium height.
+        .onChange(of: place.id) {
+            drivingEstimate = nil
+            walkingEstimate = nil
+            detent = defaultDetent
         }
         .confirmationDialog(
             "Get Directions",
@@ -70,6 +83,10 @@ struct PlaceDetailCard: View {
     /// fractional detent squashes the content; use full height there.
     private var detents: Set<PresentationDetent> {
         isRegularWidth ? [.large] : [.fraction(0.55), .large]
+    }
+
+    private var defaultDetent: PresentationDetent {
+        isRegularWidth ? .large : .fraction(0.55)
     }
 
     // MARK: - Sections
@@ -98,6 +115,8 @@ struct PlaceDetailCard: View {
         .frame(height: 130)
         .clipShape(RoundedRectangle(cornerRadius: 16))
         .allowsHitTesting(false)
+        // `initialPosition` is only read once; rebuild the preview per place.
+        .id(place.id)
     }
 
     private var header: some View {
