@@ -9,42 +9,72 @@ import MapKit
 /// Thrown when every keyword search fails (e.g. no internet connection).
 struct SearchFailedError: Error {}
 
+/// One keyword search result and its position in that search's results.
+private struct SearchHit {
+    let item: MKMapItem
+    let keyword: String
+    let rank: Int
+}
+
+/// A deduplicated place and the best rank per keyword that returned it.
+private struct Candidate {
+    let item: MKMapItem
+    /// MapKit's stable place identifier (iOS 18+), when available.
+    let identifier: String?
+    let name: String
+    let location: CLLocation
+    var keywordRanks: [String: Int]
+}
+
 final class PlacesSearchService {
+    /// Each MapKit search returns at most 25 results, so variety matters more than
+    /// synonyms: near-duplicates ("doner"/"döner", "kebab"/"kebab restaurant") just
+    /// return the same 25 places. This set was picked by measuring which keywords
+    /// add places no other keyword finds (Istanbul + Berlin, 100% coverage of the
+    /// original 27 keywords); fewer requests also means less MapKit throttling.
     private let searchKeywords = [
-        "döner",
         "kebab",
-        "kebap",
-        "gyro",
         "dönerci",
-        "döner salonu",
-        "döner kebap",
-        "döner kebab",
-        "şavarma",
-        "shawarma",
-        "dürüm",
-        "kebapçı",
-        "kebap salonu",
-        "doner",
-        "iskender",
-        "adana kebap",
         "tantuni",
-        "kebab shop",
-        "kebab house",
-        "doner kebab",
+        "dürüm",
+        "kebap salonu",
+        "döner salonu",
+        "iskender",
+        "döner",
+        "adana kebap",
         "döner imbiss",
-        "kebab restaurant",
-        "gyros",
-        "shoarma",
         "kebab takeaway",
-        "rotisserie kebab",
-        "kebab stand"
+        "şavarma",
+        "kebapçı",
+        "döner kebap",
+        "shawarma",
+        "kebab house",
+        "gyros",
+        "kebap",
+        "döner kebab",
+        "kebab shop"
     ]
+    /// Keywords whose results alone don't prove a place serves doner. Where real
+    /// matches are scarce (e.g. "shawarma" in Turkey, "gyros" near Greek
+    /// tavernas), MapKit pads these with unrelated nearby restaurants.
+    private let weakKeywords: Set<String> = ["gyro", "gyros", "şavarma", "shawarma", "shoarma"]
+    /// A name containing one of these (case/diacritic-folded) is a doner/kebab place.
+    private let strongNameTerms = [
+        "doner", "kebab", "kebap", "durum", "gyro", "shawarma", "schawarma", "shoarma",
+        "savarma", "iskender", "tantuni", "adana", "ocakbas"
+    ]
+    /// Names that hint at a kebab shop but need at least some keyword support.
+    private let weakNameTerms = ["imbiss", "grill"]
+    /// A place returned by a single trusted keyword is kept only if ranked this high.
+    private let maxSingleKeywordRank = 5
+
     /// Two results with the same name count as one place only within this distance.
     /// Farther apart, they are different branches of the same chain and are kept.
     private let sameNameDistanceThreshold: Double = 250
-    /// Two results this close are treated as the same POI even if the names differ
-    /// (the same shop may be spelled slightly differently across keywords).
-    private let sameSpotDistanceThreshold: Double = 25
+    /// Without a MapKit identifier, results with different names count as the same
+    /// POI only at (almost) the same coordinate. This used to be 25 m, which merged
+    /// neighboring shops on the same street and dropped one of them at random.
+    private let sameSpotDistanceThreshold: Double = 3
 
     func search(
         around coordinate: CLLocationCoordinate2D,
@@ -71,28 +101,31 @@ final class PlacesSearchService {
             longitudinalMeters: radiusInMeters * 2
         )
 
-        var mapItems: [MKMapItem] = []
+        var hits: [SearchHit] = []
         var anySucceeded = false
 
-        await withTaskGroup(of: [MKMapItem]?.self) { group in
+        await withTaskGroup(of: (String, [MKMapItem]?).self) { group in
             for keyword in searchKeywords {
                 group.addTask {
-                    await self.performSearch(keyword: keyword, region: region)
+                    (keyword, await self.performSearch(keyword: keyword, region: region))
                 }
             }
 
-            for await items in group {
+            for await (keyword, items) in group {
                 guard let items else { continue } // nil = this search failed
                 anySucceeded = true
-                mapItems.append(contentsOf: items)
+                for (index, item) in items.enumerated() {
+                    hits.append(SearchHit(item: item, keyword: keyword, rank: index + 1))
+                }
             }
         }
 
         // If no search succeeded (e.g. no internet), propagate the error.
         guard anySucceeded else { throw SearchFailedError() }
 
-        let uniqueItems = deduplicate(mapItems)
-        let places = uniqueItems.compactMap { mapItem -> DonerPlace? in
+        let relevant = deduplicate(hits).filter(isRelevant)
+        let places = relevant.compactMap { candidate -> DonerPlace? in
+            let mapItem = candidate.item
             let placeCoordinate = mapItem.placemark.coordinate
             guard CLLocationCoordinate2DIsValid(placeCoordinate) else { return nil }
 
@@ -142,43 +175,85 @@ final class PlacesSearchService {
         }
     }
 
-    private func deduplicate(_ mapItems: [MKMapItem]) -> [MKMapItem] {
-        // Compute each location once and carry it along; otherwise a new
-        // CLLocation was created on every comparison.
-        var unique: [(item: MKMapItem, name: String, location: CLLocation)] = []
+    /// Merges results that are the same place, keeping every keyword (and its
+    /// best rank) that returned it — that history is what `isRelevant` scores.
+    private func deduplicate(_ hits: [SearchHit]) -> [Candidate] {
+        var unique: [Candidate] = []
 
-        for mapItem in mapItems {
-            let coordinate = mapItem.placemark.coordinate
-            let candidate = (
-                item: mapItem,
-                name: normalizedName(mapItem.name),
-                location: CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
-            )
+        for hit in hits {
+            let coordinate = hit.item.placemark.coordinate
+            let name = normalizedName(hit.item.name)
+            let location = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
+            let identifier = Self.identifier(of: hit.item)
 
-            let isDuplicate = unique.contains { existing in
-                isSamePlace(candidate, existing)
-            }
-
-            if !isDuplicate {
-                unique.append(candidate)
+            if let index = unique.firstIndex(where: { isSamePlace(identifier, name, location, $0) }) {
+                let best = min(unique[index].keywordRanks[hit.keyword] ?? .max, hit.rank)
+                unique[index].keywordRanks[hit.keyword] = best
+            } else {
+                unique.append(Candidate(
+                    item: hit.item,
+                    identifier: identifier,
+                    name: name,
+                    location: location,
+                    keywordRanks: [hit.keyword: hit.rank]
+                ))
             }
         }
 
-        return unique.map(\.item)
+        return unique
     }
 
     private func isSamePlace(
-        _ lhs: (item: MKMapItem, name: String, location: CLLocation),
-        _ rhs: (item: MKMapItem, name: String, location: CLLocation)
+        _ identifier: String?,
+        _ name: String,
+        _ location: CLLocation,
+        _ other: Candidate
     ) -> Bool {
-        let distance = lhs.location.distance(from: rhs.location)
+        // MapKit's stable place identifier (iOS 18+) settles it when both have one.
+        if let identifier, let otherIdentifier = other.identifier {
+            return identifier == otherIdentifier
+        }
+
+        let distance = location.distance(from: other.location)
 
         // The same name ALONE is not enough: different branches can share a name.
-        if !lhs.name.isEmpty, lhs.name == rhs.name {
+        if !name.isEmpty, name == other.name {
             return distance < sameNameDistanceThreshold
         }
 
         return distance < sameSpotDistanceThreshold
+    }
+
+    /// MapKit fills sparse keyword searches with nearby restaurants that have
+    /// nothing to do with doner (lounges, hotels, çiğköfte...). Keep a place only
+    /// when the evidence says it serves doner/kebab:
+    /// - its name says so, or
+    /// - at least two trusted keywords returned it, or
+    /// - one trusted keyword returned it near the top, or
+    /// - its name hints at it ("imbiss", "grill") and a trusted keyword returned it.
+    /// Weak keywords (shawarma/gyro families) never count on their own.
+    private func isRelevant(_ candidate: Candidate) -> Bool {
+        // Folding also matches decomposed Unicode (MapKit sometimes returns "ö"
+        // as "o" + a combining mark) and treats "döner" and "doner" alike.
+        let name = (candidate.item.name ?? "")
+            .folding(options: [.caseInsensitive, .diacriticInsensitive], locale: nil)
+        if strongNameTerms.contains(where: name.contains) { return true }
+
+        let trustedRanks = candidate.keywordRanks
+            .filter { !weakKeywords.contains($0.key) }
+            .map(\.value)
+        guard let bestRank = trustedRanks.min() else { return false }
+
+        return trustedRanks.count >= 2
+            || bestRank <= maxSingleKeywordRank
+            || weakNameTerms.contains(where: name.contains)
+    }
+
+    private static func identifier(of item: MKMapItem) -> String? {
+        if #available(iOS 18.0, *) {
+            return item.identifier?.rawValue
+        }
+        return nil
     }
 
     private func normalizedName(_ name: String?) -> String {
