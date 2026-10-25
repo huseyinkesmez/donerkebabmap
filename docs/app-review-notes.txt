@@ -4,8 +4,11 @@ DEMO ACCOUNT: Not required. No accounts, login, purchases, subscriptions, or use
 
 IMPORTANT FOR TESTING: The app shows doner/kebab restaurants near the device's current location (20 km radius, via Apple MapKit). Results depend on the reviewer's location; in an area with few such restaurants, few or no pins may appear. This is expected behavior, not a bug. For a full result set, please test in or simulate a major city such as Berlin, London, or Istanbul.
 
-1. SCREEN RECORDING
-Attached to this reply, captured on a physical iPhone. It shows app launch, onboarding, the location permission prompt, the map with results, the place detail sheet, adding a favorite, the directions flow, and the List and More tabs.
+1. WHAT'S NEW IN 1.1
+- "Search This Area": after panning the map to another area, a button at the top searches around the map center and adds those places.
+- The place detail sheet shows the route from the user to the place on its small map.
+- Nearby pins group into numbered bubbles when zoomed out; tap a bubble to zoom in.
+- Refreshed colors and haptic feedback on pin taps and favorites.
 
 2. DEVICES TESTED
 iPhone 13, iOS 27.0 (physical device). Also tested on iOS Simulator (iPhone 17, iOS 26.2). The app supports iOS 17.0 and later.
@@ -18,13 +21,14 @@ No credentials or sample files needed.
 - Launch the app; a short onboarding appears (Next / Skip).
 - Allow location ("Allow While Using App"). Only When-In-Use location is requested.
 - Nearby places load automatically as pins.
-- Tap a pin for details: distance, travel time, arrival time, address, phone/website when available, favorite (heart), Get Directions, Share.
+- Tap a pin for details: route preview, distance, travel time, arrival time, address, phone/website when available, favorite (heart), Get Directions, Share.
+- Pan the map to another area and tap "Search This Area" to find places there.
 - List tab: same places sorted by distance.
 - More tab: favorites (swipe to delete), appearance (System/Light/Dark), version, contact.
 If location is denied, the app still opens and offers a button to open Settings.
 
 5. EXTERNAL SERVICES
-Only Apple frameworks: MapKit (place search and travel-time estimates), Core Location (device location), MessageUI (contact email, user-initiated). Directions open Apple Maps or Google Maps at the user's choice; only destination coordinates are passed in the URL. No backend server, no authentication, no payments, no ads, no analytics or tracking SDKs, no AI services. Favorites and settings are stored locally on the device only. No personal data is collected or shared (see privacy manifest and privacy policy).
+Only Apple frameworks: MapKit (place search, routes and travel-time estimates), Core Location (device location), MessageUI (contact email, user-initiated). Directions open Apple Maps or Google Maps at the user's choice; only destination coordinates are passed in the URL. No backend server, no authentication, no payments, no ads, no analytics or tracking SDKs, no AI services. Favorites and settings are stored locally on the device only. No personal data is collected or shared (see privacy manifest and privacy policy).
 
 6. REGIONAL DIFFERENCES
 The app works the same in all regions; no region-locked features or content. The UI is localized in English, German, and French. The only variation is the number of results, which depends on Apple Maps coverage in the area.
