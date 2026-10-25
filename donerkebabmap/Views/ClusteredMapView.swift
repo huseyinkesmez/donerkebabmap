@@ -24,6 +24,33 @@ struct ClusteredMapView: UIViewRepresentable {
     var onRegionChange: (MKCoordinateRegion, _ userInitiated: Bool) -> Void = { _, _ in }
     /// Called when the user taps the location button to go back to their position.
     var onReturnToUser: () -> Void = {}
+    /// Called when the user (not code) taps a pin or a cluster, e.g. for haptics.
+    var onPinTap: () -> Void = {}
+    /// When this changes, the map zooms to fit its coordinates once.
+    var zoomTarget: ZoomTarget?
+    /// Gives the parent the live region, e.g. while the map is still gliding.
+    var reader: MapReader?
+
+    /// Read access to the map's current region at any moment. The settled
+    /// region reported by `onRegionChange` lags behind while the map is still
+    /// moving after a swipe.
+    final class MapReader {
+        fileprivate weak var mapView: MKMapView?
+
+        /// Stops any gliding and returns where the map is right now.
+        func stopAndReadRegion() -> MKCoordinateRegion? {
+            guard let mapView else { return nil }
+            mapView.setCenter(mapView.centerCoordinate, animated: false)
+            return mapView.region
+        }
+    }
+
+    struct ZoomTarget: Equatable {
+        let id = UUID()
+        let coordinates: [CLLocationCoordinate2D]
+
+        static func == (lhs: ZoomTarget, rhs: ZoomTarget) -> Bool { lhs.id == rhs.id }
+    }
 
     func makeCoordinator() -> Coordinator {
         Coordinator(onSelect: onSelect)
@@ -42,6 +69,7 @@ struct ClusteredMapView: UIViewRepresentable {
         mapView.preferredConfiguration = configuration
 
         context.coordinator.trackUserGestures(on: mapView)
+        reader?.mapView = mapView
 
         mapView.register(
             PlaceAnnotationView.self,
@@ -59,8 +87,21 @@ struct ClusteredMapView: UIViewRepresentable {
         coordinator.onSelect = onSelect
         coordinator.onRegionChange = onRegionChange
         coordinator.onReturnToUser = onReturnToUser
+        coordinator.onPinTap = onPinTap
         coordinator.sync(places, on: mapView)
         coordinator.syncSelection(selectedPlaceID, on: mapView)
+
+        if let zoomTarget, zoomTarget.id != coordinator.lastZoomTargetID {
+            coordinator.lastZoomTargetID = zoomTarget.id
+            let rect = zoomTarget.coordinates
+                .map { MKMapRect(origin: MKMapPoint($0), size: MKMapSize(width: 0, height: 0)) }
+                .reduce(MKMapRect.null) { $0.union($1) }
+            mapView.setVisibleMapRect(
+                rect,
+                edgePadding: UIEdgeInsets(top: 140, left: 60, bottom: 140, right: 60),
+                animated: true
+            )
+        }
 
         if !coordinator.hasFocused, let focusCoordinate {
             coordinator.hasFocused = true
@@ -85,7 +126,9 @@ struct ClusteredMapView: UIViewRepresentable {
         var onSelect: (DonerPlace) -> Void
         var onRegionChange: (MKCoordinateRegion, Bool) -> Void = { _, _ in }
         var onReturnToUser: () -> Void = {}
+        var onPinTap: () -> Void = {}
         var hasFocused = false
+        var lastZoomTargetID: UUID?
         /// Our own pan/pinch recognizers, used only to tell user gestures apart
         /// from moves made in code. They run alongside MapKit's recognizers.
         private let panTracker = UIPanGestureRecognizer()
@@ -190,11 +233,13 @@ struct ClusteredMapView: UIViewRepresentable {
 
         func mapView(_ mapView: MKMapView, didSelect annotation: MKAnnotation) {
             if let cluster = annotation as? MKClusterAnnotation {
+                onPinTap()
                 mapView.deselectAnnotation(cluster, animated: false)
                 // Zoom in until the cluster's members fit on screen.
                 mapView.showAnnotations(cluster.memberAnnotations, animated: true)
             } else if let place = annotation as? PlaceAnnotation {
                 guard !isSelectingProgrammatically else { return }
+                onPinTap()
                 // Stay selected (highlighted) until the detail sheet is closed.
                 revealAboveSheet(place.coordinate, on: mapView)
                 onSelect(place.place)

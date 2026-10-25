@@ -228,6 +228,22 @@
         }
       }
     },
+    "Couldn't search this area. Try again in a moment.": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Suche in diesem Bereich fehlgeschlagen. Versuch es gleich noch mal."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossible de rechercher dans cette zone. Réessayez dans un instant."
+          }
+        }
+      }
+    },
     "Dark": {
       "localizations": {
         "de": {

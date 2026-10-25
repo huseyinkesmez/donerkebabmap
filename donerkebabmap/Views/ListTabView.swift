@@ -108,10 +108,12 @@ private struct PlaceRow: View {
 
     var body: some View {
         HStack(spacing: 14) {
+            // A soft tint instead of a solid gradient, so a long list of rows
+            // doesn't turn into a column of loud red tiles.
             ZStack {
                 RoundedRectangle(cornerRadius: 12)
-                    .fill(AppTheme.brandGradient)
-                DonerGlyph(meat: Color.white, spit: .white)
+                    .fill(AppTheme.primaryAccent.opacity(0.12))
+                DonerGlyph(meat: AppTheme.primaryAccent, spit: AppTheme.primaryAccent)
                     .frame(width: 22, height: 28)
             }
             .frame(width: 48, height: 48)

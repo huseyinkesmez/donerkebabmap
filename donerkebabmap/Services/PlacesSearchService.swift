@@ -54,6 +54,13 @@ final class PlacesSearchService {
         "döner kebab",
         "kebab shop"
     ]
+    /// Used by "Search This Area". MapKit throttles an app at roughly 50
+    /// requests a minute, and the full list is 20 requests per search, so
+    /// repeated area searches got throttled and came back empty or partial.
+    /// The list above is ordered by how many new places each keyword adds, so
+    /// its first keywords find most places.
+    private let quickKeywordCount = 8
+
     /// Keywords whose results alone don't prove a place serves doner. Where real
     /// matches are scarce (e.g. "shawarma" in Turkey, "gyros" near Greek
     /// tavernas), MapKit pads these with unrelated nearby restaurants.
@@ -82,7 +89,8 @@ final class PlacesSearchService {
     func search(
         center coordinate: CLLocationCoordinate2D,
         radiusInMeters: Double = 20_000,
-        userLocation userCoordinate: CLLocationCoordinate2D?
+        userLocation userCoordinate: CLLocationCoordinate2D?,
+        quick: Bool = false
     ) async throws -> [DonerPlace] {
         let authorizationStatus = CLLocationManager().authorizationStatus
         switch authorizationStatus {
@@ -106,27 +114,31 @@ final class PlacesSearchService {
             longitudinalMeters: radiusInMeters * 2
         )
 
+        let keywords = quick ? Array(searchKeywords.prefix(quickKeywordCount)) : searchKeywords
         var hits: [SearchHit] = []
-        var anySucceeded = false
+        var failedCount = 0
 
         await withTaskGroup(of: (String, [MKMapItem]?).self) { group in
-            for keyword in searchKeywords {
+            for keyword in keywords {
                 group.addTask {
                     (keyword, await self.performSearch(keyword: keyword, region: region))
                 }
             }
 
             for await (keyword, items) in group {
-                guard let items else { continue } // nil = this search failed
-                anySucceeded = true
+                guard let items else { // nil = this search failed
+                    failedCount += 1
+                    continue
+                }
                 for (index, item) in items.enumerated() {
                     hits.append(SearchHit(item: item, keyword: keyword, rank: index + 1))
                 }
             }
         }
 
-        // If no search succeeded (e.g. no internet), propagate the error.
-        guard anySucceeded else { throw SearchFailedError() }
+        // Only a total failure (no internet, or fully throttled) is an error.
+        // Partial results are still useful: they add to the places already found.
+        guard failedCount < keywords.count else { throw SearchFailedError() }
 
         let relevant = deduplicate(hits).filter(isRelevant)
         let places = relevant.compactMap { candidate -> (place: DonerPlace, centerDistance: Double)? in

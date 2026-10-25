@@ -18,6 +18,8 @@ struct PlaceDetailCard: View {
     @State private var drivingEstimate: TravelEstimate?
     @State private var walkingEstimate: TravelEstimate?
     @State private var detent: PresentationDetent = .fraction(0.55)
+    /// Changes on every favorite toggle to play a haptic.
+    @State private var favoriteFeedbackTrigger = 0
 
     var body: some View {
         VStack(spacing: 0) {
@@ -50,6 +52,10 @@ struct PlaceDetailCard: View {
         // Without an explicit background the sheet stays translucent and
         // blends with the map behind it; use the opaque system background.
         .presentationBackground(Color(.systemBackground))
+        // A clear "success" tap when adding, a plain one when removing.
+        .sensoryFeedback(trigger: favoriteFeedbackTrigger) { _, _ in
+            favoriteStore.isFavorite(place) ? .success : .impact(weight: .medium)
+        }
         .onAppear { detent = defaultDetent }
         .task(id: place.id) {
             await loadTravelTimes()
@@ -106,14 +112,6 @@ struct PlaceDetailCard: View {
 
     private var header: some View {
         HStack(spacing: 14) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 14)
-                    .fill(AppTheme.brandGradient)
-                DonerGlyph(meat: Color.white, spit: .white)
-                    .frame(width: 26, height: 33)
-            }
-            .frame(width: 52, height: 52)
-
             VStack(alignment: .leading, spacing: 6) {
                 Text(place.name)
                     .font(.title3)
@@ -238,11 +236,21 @@ struct PlaceDetailCard: View {
                     .font(.headline)
                     .lineLimit(1)
                     .minimumScaleFactor(0.75)
-                    .frame(maxWidth: .infinity)
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 12)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(
+                        LinearGradient(
+                            colors: [AppTheme.secondary, AppTheme.primary],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        ),
+                        in: Capsule()
+                    )
+                    .contentShape(Capsule())
                 }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
-                .tint(AppTheme.primary)
+                .buttonStyle(.plain)
+                .frame(height: 50)
 
                 if let shareURL = place.shareURL {
                     ShareLink(item: shareURL) {
@@ -253,7 +261,7 @@ struct PlaceDetailCard: View {
                     .buttonStyle(.bordered)
                     .controlSize(.large)
                     .frame(width: 48, height: 50)
-                    .tint(AppTheme.primaryAccent)
+                    .tint(.gray)
                 }
             }
             .padding(.horizontal, 20)
@@ -282,7 +290,7 @@ struct PlaceDetailCard: View {
 
     private func toggleFavorite() {
         favoriteStore.toggle(place)
-        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        favoriteFeedbackTrigger += 1
     }
 
     private func callPhone(_ phone: String) {
