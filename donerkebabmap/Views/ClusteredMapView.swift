@@ -19,6 +19,11 @@ struct ClusteredMapView: UIViewRepresentable {
     /// The place whose detail sheet is open; its pin stays highlighted.
     let selectedPlaceID: UUID?
     let onSelect: (DonerPlace) -> Void
+    /// Called when the visible region settles. `userInitiated` is false for moves
+    /// made in code (initial focus, revealing a selected pin, zooming into a cluster).
+    var onRegionChange: (MKCoordinateRegion, _ userInitiated: Bool) -> Void = { _, _ in }
+    /// Called when the user taps the location button to go back to their position.
+    var onReturnToUser: () -> Void = {}
 
     func makeCoordinator() -> Coordinator {
         Coordinator(onSelect: onSelect)
@@ -36,6 +41,8 @@ struct ClusteredMapView: UIViewRepresentable {
         configuration.pointOfInterestFilter = .excludingAll
         mapView.preferredConfiguration = configuration
 
+        context.coordinator.trackUserGestures(on: mapView)
+
         mapView.register(
             PlaceAnnotationView.self,
             forAnnotationViewWithReuseIdentifier: PlaceAnnotationView.reuseIdentifier
@@ -50,6 +57,8 @@ struct ClusteredMapView: UIViewRepresentable {
     func updateUIView(_ mapView: MKMapView, context: Context) {
         let coordinator = context.coordinator
         coordinator.onSelect = onSelect
+        coordinator.onRegionChange = onRegionChange
+        coordinator.onReturnToUser = onReturnToUser
         coordinator.sync(places, on: mapView)
         coordinator.syncSelection(selectedPlaceID, on: mapView)
 
@@ -68,13 +77,21 @@ struct ClusteredMapView: UIViewRepresentable {
 
     // MARK: - Coordinator
 
-    final class Coordinator: NSObject, MKMapViewDelegate {
+    final class Coordinator: NSObject, MKMapViewDelegate, UIGestureRecognizerDelegate {
         /// Below this span (~3 km tall) the map is "zoomed in": every pin and its
         /// name is shown and nothing clusters. Above it, pins cluster and names hide.
         private static let zoomedInMaxLatitudeDelta = 0.03
 
         var onSelect: (DonerPlace) -> Void
+        var onRegionChange: (MKCoordinateRegion, Bool) -> Void = { _, _ in }
+        var onReturnToUser: () -> Void = {}
         var hasFocused = false
+        /// Our own pan/pinch recognizers, used only to tell user gestures apart
+        /// from moves made in code. They run alongside MapKit's recognizers.
+        private let panTracker = UIPanGestureRecognizer()
+        private let pinchTracker = UIPinchGestureRecognizer()
+        /// Set by a user gesture; reported and cleared when the region settles.
+        private var regionChangeIsFromUser = false
         private var annotationsByID: [UUID: PlaceAnnotation] = [:]
         private var isZoomedIn = true
         private var selectedID: UUID?
@@ -83,6 +100,28 @@ struct ClusteredMapView: UIViewRepresentable {
 
         init(onSelect: @escaping (DonerPlace) -> Void) {
             self.onSelect = onSelect
+        }
+
+        func trackUserGestures(on mapView: MKMapView) {
+            for recognizer in [panTracker, pinchTracker] as [UIGestureRecognizer] {
+                recognizer.addTarget(self, action: #selector(userGestureChanged))
+                recognizer.delegate = self
+                recognizer.cancelsTouchesInView = false
+                mapView.addGestureRecognizer(recognizer)
+            }
+        }
+
+        func gestureRecognizer(
+            _ gestureRecognizer: UIGestureRecognizer,
+            shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer
+        ) -> Bool {
+            true
+        }
+
+        @objc private func userGestureChanged(_ recognizer: UIGestureRecognizer) {
+            if recognizer.state == .began || recognizer.state == .changed {
+                regionChangeIsFromUser = true
+            }
         }
 
         /// Adds/removes only what changed, so SwiftUI updates don't reset the map.
@@ -119,6 +158,15 @@ struct ClusteredMapView: UIViewRepresentable {
             isSelectingProgrammatically = true
             mapView.selectAnnotation(annotation, animated: true)
             isSelectingProgrammatically = false
+        }
+
+        /// Keep the blue user location dot above pins and their name labels;
+        /// otherwise it disappears under them in busy areas.
+        func mapView(_ mapView: MKMapView, didAdd views: [MKAnnotationView]) {
+            for view in views where view.annotation is MKUserLocation {
+                view.displayPriority = .required
+                view.zPriority = .max
+            }
         }
 
         func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
@@ -164,7 +212,15 @@ struct ClusteredMapView: UIViewRepresentable {
             mapView.setCenter(newCenter, animated: true)
         }
 
+        /// The tracking button switches the mode to follow the user.
+        func mapView(_ mapView: MKMapView, didChange mode: MKUserTrackingMode, animated: Bool) {
+            if mode != .none { onReturnToUser() }
+        }
+
         func mapView(_ mapView: MKMapView, regionDidChangeAnimated animated: Bool) {
+            onRegionChange(mapView.region, regionChangeIsFromUser)
+            regionChangeIsFromUser = false
+
             let zoomedIn = mapView.region.span.latitudeDelta < Self.zoomedInMaxLatitudeDelta
             guard zoomedIn != isZoomedIn else { return }
             isZoomedIn = zoomedIn
@@ -264,7 +320,8 @@ final class PlaceAnnotationView: MKAnnotationView {
         clusteringIdentifier = standsAlone ? nil : "place"
         collisionMode = .circle
         displayPriority = standsAlone ? .required : .defaultHigh
-        zPriority = isSelected ? .max : .defaultUnselected
+        // Just below the user location dot, which stays on top.
+        zPriority = isSelected ? MKAnnotationViewZPriority(rawValue: MKAnnotationViewZPriority.max.rawValue - 1) : .defaultUnselected
     }
 
     private func applyMarkerImage() {

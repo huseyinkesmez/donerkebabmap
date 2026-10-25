@@ -92,30 +92,15 @@ struct PlaceDetailCard: View {
     // MARK: - Sections
 
     private var mapPreview: some View {
-        Map(
-            initialPosition: .region(
-                MKCoordinateRegion(
-                    center: place.coordinate,
-                    latitudinalMeters: 400,
-                    longitudinalMeters: 400
-                )
-            ),
-            interactionModes: []
-        ) {
-            Annotation("", coordinate: place.coordinate) {
-                DonerGlyph(meat: Color.white, spit: .white)
-                    .frame(width: 18, height: 24)
-                    .frame(width: 30, height: 30)
-                    .background(AppTheme.brandGradient, in: Circle())
-                    .overlay(Circle().strokeBorder(.white, lineWidth: 2))
-                    .shadow(color: .black.opacity(0.3), radius: 2, y: 1)
-            }
-        }
-        .mapStyle(.standard(pointsOfInterest: .excludingAll))
+        RoutePreviewMap(
+            place: place,
+            route: selectedEstimate?.route,
+            isWalking: transportMode == .walking
+        )
         .frame(height: 130)
         .clipShape(RoundedRectangle(cornerRadius: 16))
         .allowsHitTesting(false)
-        // `initialPosition` is only read once; rebuild the preview per place.
+        // Start every place from its own camera instead of animating from the last one.
         .id(place.id)
     }
 
@@ -319,13 +304,14 @@ struct PlaceDetailCard: View {
         request.destination = place.mapItem
         request.transportType = type
 
-        guard let response = try? await MKDirections(request: request).calculateETA() else {
+        guard let route = try? await MKDirections(request: request).calculate().routes.first else {
             return nil
         }
         return TravelEstimate(
-            travelTime: response.expectedTravelTime,
-            distanceInMeters: response.distance,
-            arrivalDate: response.expectedArrivalDate
+            travelTime: route.expectedTravelTime,
+            distanceInMeters: route.distance,
+            arrivalDate: Date().addingTimeInterval(route.expectedTravelTime),
+            route: route
         )
     }
 
@@ -337,12 +323,80 @@ struct PlaceDetailCard: View {
     }
 }
 
-/// Values kept from the `calculateETA()` response. The same call returns the
-/// travel time, the real route distance and the expected arrival time.
+/// Values kept from the `calculate()` response: the travel time, the real route
+/// distance, the expected arrival time and the route line for the mini map.
 private struct TravelEstimate {
     let travelTime: TimeInterval
     let distanceInMeters: CLLocationDistance
     let arrivalDate: Date
+    let route: MKRoute
+}
+
+/// The small map at the top of the card: the place pin and, once it is known,
+/// the route from the user to it (dashed when walking).
+private struct RoutePreviewMap: View {
+    let place: DonerPlace
+    let route: MKRoute?
+    let isWalking: Bool
+
+    @State private var position: MapCameraPosition
+
+    init(place: DonerPlace, route: MKRoute?, isWalking: Bool) {
+        self.place = place
+        self.route = route
+        self.isWalking = isWalking
+        _position = State(initialValue: Self.cameraPosition(place: place, route: route))
+    }
+
+    var body: some View {
+        Map(position: $position, interactionModes: []) {
+            UserAnnotation()
+
+            if let route {
+                MapPolyline(route.polyline)
+                    .stroke(
+                        AppTheme.primary,
+                        style: StrokeStyle(
+                            lineWidth: 4,
+                            lineCap: .round,
+                            lineJoin: .round,
+                            dash: isWalking ? [1, 7] : []
+                        )
+                    )
+            }
+
+            Annotation("", coordinate: place.coordinate) {
+                DonerGlyph(meat: Color.white, spit: .white)
+                    .frame(width: 18, height: 24)
+                    .frame(width: 30, height: 30)
+                    .background(AppTheme.brandGradient, in: Circle())
+                    .overlay(Circle().strokeBorder(.white, lineWidth: 2))
+                    .shadow(color: .black.opacity(0.3), radius: 2, y: 1)
+            }
+        }
+        .mapStyle(.standard(pointsOfInterest: .excludingAll))
+        .tint(.blue)
+        .onChange(of: route) {
+            withAnimation { position = Self.cameraPosition(place: place, route: route) }
+        }
+    }
+
+    /// Fits the whole route with some padding (room for the pins); without a
+    /// route, a close-up around the place.
+    private static func cameraPosition(place: DonerPlace, route: MKRoute?) -> MapCameraPosition {
+        guard let route else {
+            return .region(MKCoordinateRegion(
+                center: place.coordinate,
+                latitudinalMeters: 400,
+                longitudinalMeters: 400
+            ))
+        }
+        let rect = route.polyline.boundingMapRect
+        // Very short routes would zoom in too far; show at least ~300 m.
+        let minSize = 300 * MKMapPointsPerMeterAtLatitude(place.coordinate.latitude)
+        let padding = max(max(rect.width, rect.height) * 0.25, (minSize - max(rect.width, rect.height)) / 2)
+        return .rect(rect.insetBy(dx: -padding, dy: -padding * 1.5))
+    }
 }
 
 // MARK: - Row helpers

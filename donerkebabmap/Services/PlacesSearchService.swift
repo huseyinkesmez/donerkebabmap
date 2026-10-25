@@ -76,9 +76,13 @@ final class PlacesSearchService {
     /// neighboring shops on the same street and dropped one of them at random.
     private let sameSpotDistanceThreshold: Double = 3
 
+    /// Searches a circle around `center`. Distances shown to the user are measured
+    /// from `userLocation` (which differs from `center` for "Search This Area");
+    /// without a user location they stay nil.
     func search(
-        around coordinate: CLLocationCoordinate2D,
-        radiusInMeters: Double = 20_000
+        center coordinate: CLLocationCoordinate2D,
+        radiusInMeters: Double = 20_000,
+        userLocation userCoordinate: CLLocationCoordinate2D?
     ) async throws -> [DonerPlace] {
         let authorizationStatus = CLLocationManager().authorizationStatus
         switch authorizationStatus {
@@ -94,7 +98,8 @@ final class PlacesSearchService {
             return []
         }
 
-        let userLocation = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
+        let centerLocation = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
+        let userLocation = userCoordinate.map { CLLocation(latitude: $0.latitude, longitude: $0.longitude) }
         let region = MKCoordinateRegion(
             center: coordinate,
             latitudinalMeters: radiusInMeters * 2,
@@ -124,7 +129,7 @@ final class PlacesSearchService {
         guard anySucceeded else { throw SearchFailedError() }
 
         let relevant = deduplicate(hits).filter(isRelevant)
-        let places = relevant.compactMap { candidate -> DonerPlace? in
+        let places = relevant.compactMap { candidate -> (place: DonerPlace, centerDistance: Double)? in
             let mapItem = candidate.item
             let placeCoordinate = mapItem.placemark.coordinate
             guard CLLocationCoordinate2DIsValid(placeCoordinate) else { return nil }
@@ -133,23 +138,25 @@ final class PlacesSearchService {
                 latitude: placeCoordinate.latitude,
                 longitude: placeCoordinate.longitude
             )
-            let distance = userLocation.distance(from: placeLocation)
-            guard distance <= radiusInMeters else { return nil }
+            let centerDistance = centerLocation.distance(from: placeLocation)
+            guard centerDistance <= radiusInMeters else { return nil }
 
-            return DonerPlace(
+            let place = DonerPlace(
                 id: UUID(),
                 name: mapItem.name ?? String(localized: "Unknown"),
                 coordinate: placeCoordinate,
                 address: formattedAddress(from: mapItem),
-                distanceInMeters: distance,
+                distanceInMeters: userLocation?.distance(from: placeLocation),
                 rating: nil,
                 mapItem: mapItem
             )
+            return (place, centerDistance)
         }
 
-        return places.sorted {
-            ($0.distanceInMeters ?? .greatestFiniteMagnitude) < ($1.distanceInMeters ?? .greatestFiniteMagnitude)
-        }
+        // Nearest to the user first; without a user location, nearest to the center.
+        return places
+            .sorted { ($0.place.distanceInMeters ?? $0.centerDistance) < ($1.place.distanceInMeters ?? $1.centerDistance) }
+            .map(\.place)
     }
 
     /// A single keyword search. Returns `nil` on failure (empty array =
