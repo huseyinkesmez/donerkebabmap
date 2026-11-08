@@ -5,21 +5,19 @@
 
 import SwiftUI
 import UIKit
+import WebKit
 
 struct ProfileTabView: View {
-    /// How many favorites to show inline; the rest are under "Show all".
-    private static let previewFavoriteCount = 3
+    private static let appStoreURL = URL(string: "https://apps.apple.com/app/id6790539934")!
+    private static let writeReviewURL = URL(string: "https://apps.apple.com/app/id6790539934?action=write-review")!
+    private static let supportURL = URL(string: "https://huseyinkesmez.github.io/donerkebabmap/support.html")!
+    private static let privacyPolicyURL = URL(string: "https://huseyinkesmez.github.io/donerkebabmap/privacy-policy.html")!
 
-    private let contactEmail = "hsynkesmez97@gmail.com"
-
-    @EnvironmentObject private var favoriteStore: FavoriteStore
-    @EnvironmentObject private var locationManager: LocationManager
     @AppStorage("appearanceMode") private var appearanceRaw = AppearanceMode.system.rawValue
+    @AppStorage("preferredMapsApp") private var preferredMapsRaw = PreferredMapsApp.ask.rawValue
     @Environment(\.openURL) private var openURL
 
-    @State private var selectedPlace: DonerPlace?
-    @State private var isShowingMail = false
-    @State private var isShowingMailFallback = false
+    @State private var webPage: WebPage?
 
     var body: some View {
         NavigationStack {
@@ -28,38 +26,6 @@ struct ProfileTabView: View {
                     header
                         .listRowInsets(EdgeInsets())
                         .listRowBackground(Color.clear)
-                }
-
-                Section("Favorites") {
-                    if favoriteStore.favorites.isEmpty {
-                        favoritesEmptyState
-                    } else {
-                        ForEach(previewFavorites) { favorite in
-                            Button {
-                                selectedPlace = DonerPlace(
-                                    favorite: favorite,
-                                    userLocation: locationManager.userLocation
-                                )
-                            } label: {
-                                FavoriteRow(favorite: favorite)
-                            }
-                            .buttonStyle(.plain)
-                        }
-                        .onDelete { favoriteStore.remove(at: $0) }
-
-                        if favoriteStore.favorites.count > Self.previewFavoriteCount {
-                            NavigationLink {
-                                AllFavoritesView()
-                            } label: {
-                                Label(
-                                    "Show all (\(favoriteStore.favorites.count))",
-                                    systemImage: "list.bullet"
-                                )
-                                .font(.subheadline.weight(.semibold))
-                                .adaptiveText()
-                            }
-                        }
-                    }
                 }
 
                 Section("Appearance") {
@@ -71,77 +37,49 @@ struct ProfileTabView: View {
                     .pickerStyle(.segmented)
                 }
 
-                Section("About") {
-                    LabeledContent("Version", value: appVersion)
-
-                    Button(action: contactByEmail) {
-                        HStack(spacing: 12) {
-                            Image(systemName: "envelope.fill")
-                                .font(.footnote)
-                                .foregroundStyle(.white)
-                                .frame(width: 28, height: 28)
-                                .background(AppTheme.brandGradient, in: RoundedRectangle(cornerRadius: 7))
-
-                            VStack(alignment: .leading, spacing: 1) {
-                                Text("Contact")
-                                    .foregroundStyle(.primary)
-                                    .adaptiveText()
-                                Text("Send us a message")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                    .adaptiveText()
-                            }
-
-                            Spacer(minLength: 0)
-
-                            Image(systemName: "chevron.right")
-                                .font(.caption2.weight(.bold))
-                                .foregroundStyle(.tertiary)
+                Section("Directions") {
+                    Picker("Open with", selection: $preferredMapsRaw) {
+                        ForEach(PreferredMapsApp.allCases) { app in
+                            Text(app.titleKey).tag(app.rawValue)
                         }
-                        .contentShape(Rectangle())
+                    }
+                    .pickerStyle(.menu)
+                }
+
+                Section("About") {
+                    Button {
+                        openURL(Self.writeReviewURL)
+                    } label: {
+                        MoreRow(icon: "star.fill", title: "Rate the App")
                     }
                     .buttonStyle(.plain)
+
+                    ShareLink(item: Self.appStoreURL) {
+                        MoreRow(icon: "square.and.arrow.up", title: "Share the App")
+                    }
+                    .buttonStyle(.plain)
+
+                    Button {
+                        webPage = WebPage(title: "Support", url: Self.supportURL)
+                    } label: {
+                        MoreRow(icon: "questionmark.circle.fill", title: "Support")
+                    }
+                    .buttonStyle(.plain)
+
+                    Button {
+                        webPage = WebPage(title: "Privacy Policy", url: Self.privacyPolicyURL)
+                    } label: {
+                        MoreRow(icon: "hand.raised.fill", title: "Privacy Policy")
+                    }
+                    .buttonStyle(.plain)
+
+                    LabeledContent("Version", value: appVersion)
                 }
             }
             .navigationTitle("More")
         }
-        .sheet(item: $selectedPlace) { place in
-            PlaceDetailCard(place: place)
-        }
-        .sheet(isPresented: $isShowingMail) {
-            MailView(recipient: contactEmail, subject: "Doner Kebab Map")
-                .ignoresSafeArea()
-        }
-        .alert("Contact", isPresented: $isShowingMailFallback) {
-            Button("Copy Email") {
-                UIPasteboard.general.string = contactEmail
-            }
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text("No mail account is set up on this device. You can reach us at \(contactEmail).")
-        }
-    }
-
-    private var previewFavorites: [FavoritePlace] {
-        Array(favoriteStore.favorites.prefix(Self.previewFavoriteCount))
-    }
-
-    /// Opens the in-app composer when a mail account is set up; otherwise
-    /// (e.g. no account on the simulator) falls back to the system `mailto:` flow.
-    private func contactByEmail() {
-        if MailView.canSendMail {
-            isShowingMail = true
-            return
-        }
-
-        // No mail account: try mailto:; if no app can open that either
-        // (e.g. the simulator), fall back to an alert showing the address.
-        guard let url = URL(string: "mailto:\(contactEmail)") else {
-            isShowingMailFallback = true
-            return
-        }
-        openURL(url) { accepted in
-            if !accepted { isShowingMailFallback = true }
+        .sheet(item: $webPage) { page in
+            WebPageView(page: page)
         }
     }
 
@@ -164,17 +102,6 @@ struct ProfileTabView: View {
         .padding(.vertical, 8)
     }
 
-    private var favoritesEmptyState: some View {
-        HStack(spacing: 12) {
-            Image(systemName: "heart")
-                .foregroundStyle(.secondary)
-
-            Text("You haven't added any favorites yet.")
-                .foregroundStyle(.secondary)
-        }
-        .padding(.vertical, 4)
-    }
-
     private var appVersion: String {
         let info = Bundle.main.infoDictionary
         let version = info?["CFBundleShortVersionString"] as? String ?? "1.0"
@@ -183,68 +110,133 @@ struct ProfileTabView: View {
     }
 }
 
-/// Page listing all favorites, opened from "Show all". Pushed onto the
-/// profile's NavigationStack.
-struct AllFavoritesView: View {
-    @EnvironmentObject private var favoriteStore: FavoriteStore
-    @EnvironmentObject private var locationManager: LocationManager
+private struct WebPage: Identifiable {
+    let title: LocalizedStringKey
+    let url: URL
+    var id: URL { url }
+}
 
-    @State private var selectedPlace: DonerPlace?
+/// One of our own web pages in a sheet, titled by name. Uses a web view because
+/// Safari's in-app browser always shows the page's address at the top.
+private struct WebPageView: View {
+    let page: WebPage
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var loadState = WebView.LoadState.loading
 
     var body: some View {
-        List {
-            ForEach(favoriteStore.favorites) { favorite in
-                Button {
-                    selectedPlace = DonerPlace(
-                        favorite: favorite,
-                        userLocation: locationManager.userLocation
-                    )
-                } label: {
-                    FavoriteRow(favorite: favorite)
+        NavigationStack {
+            WebView(url: page.url, loadState: $loadState)
+                .ignoresSafeArea(edges: .bottom)
+                .overlay {
+                    switch loadState {
+                    case .loading:
+                        ProgressView()
+                    case .loaded:
+                        EmptyView()
+                    case .failed:
+                        ContentUnavailableView(
+                            "Couldn't Load This Page",
+                            systemImage: "wifi.slash",
+                            description: Text("Check your internet connection and try again.")
+                        )
+                        .background(Color(.systemBackground))
+                    }
                 }
-                .buttonStyle(.plain)
-            }
-            .onDelete { favoriteStore.remove(at: $0) }
-        }
-        .navigationTitle("Favorites")
-        .navigationBarTitleDisplayMode(.inline)
-        .overlay {
-            if favoriteStore.favorites.isEmpty {
-                ContentUnavailableView(
-                    "No Favorites",
-                    systemImage: "heart",
-                    description: Text("You haven't added any favorites yet.")
-                )
-            }
-        }
-        .sheet(item: $selectedPlace) { place in
-            PlaceDetailCard(place: place)
+                .navigationTitle(page.title)
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button {
+                            dismiss()
+                        } label: {
+                            Image(systemName: "xmark")
+                        }
+                        .accessibilityLabel("Close")
+                    }
+                }
         }
     }
 }
 
-private struct FavoriteRow: View {
-    let favorite: FavoritePlace
+private struct WebView: UIViewRepresentable {
+    enum LoadState {
+        case loading, loaded, failed
+    }
+
+    let url: URL
+    @Binding var loadState: LoadState
+
+    func makeCoordinator() -> Coordinator { Coordinator(loadState: $loadState) }
+
+    func makeUIView(context: Context) -> WKWebView {
+        let webView = WKWebView()
+        webView.navigationDelegate = context.coordinator
+        // No white flash in dark mode while the page loads.
+        webView.isOpaque = false
+        webView.backgroundColor = .clear
+        webView.load(URLRequest(url: url))
+        return webView
+    }
+
+    func updateUIView(_ webView: WKWebView, context: Context) {}
+
+    final class Coordinator: NSObject, WKNavigationDelegate {
+        @Binding var loadState: LoadState
+
+        init(loadState: Binding<LoadState>) {
+            _loadState = loadState
+        }
+
+        func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+            loadState = .loaded
+        }
+
+        func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
+            loadState = .failed
+        }
+
+        func webView(
+            _ webView: WKWebView,
+            didFailProvisionalNavigation navigation: WKNavigation!,
+            withError error: Error
+        ) {
+            loadState = .failed
+        }
+
+        /// Links to our own pages stay here; others (e.g. mailto:) go to the system.
+        func webView(
+            _ webView: WKWebView,
+            decidePolicyFor action: WKNavigationAction,
+            decisionHandler: @escaping (WKNavigationActionPolicy) -> Void
+        ) {
+            guard action.navigationType == .linkActivated,
+                  let url = action.request.url,
+                  url.host != webView.url?.host else {
+                decisionHandler(.allow)
+                return
+            }
+            UIApplication.shared.open(url)
+            decisionHandler(.cancel)
+        }
+    }
+}
+
+private struct MoreRow: View {
+    let icon: String
+    let title: LocalizedStringKey
 
     var body: some View {
         HStack(spacing: 12) {
-            Image(systemName: "heart.fill")
-                .font(.subheadline)
-                .foregroundStyle(.red)
+            Image(systemName: icon)
+                .font(.footnote)
+                .foregroundStyle(AppTheme.primaryAccent)
+                .frame(width: 28, height: 28)
+                .background(AppTheme.primaryAccent.opacity(0.12), in: RoundedRectangle(cornerRadius: 7))
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text(favorite.name)
-                    .font(.body)
-                    .foregroundStyle(.primary)
-                    .lineLimit(1)
-
-                if !favorite.address.isEmpty {
-                    Text(favorite.address)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
-            }
+            Text(title)
+                .foregroundStyle(.primary)
+                .adaptiveText()
 
             Spacer(minLength: 0)
 
@@ -253,12 +245,9 @@ private struct FavoriteRow: View {
                 .foregroundStyle(.tertiary)
         }
         .contentShape(Rectangle())
-        .padding(.vertical, 2)
     }
 }
 
 #Preview {
     ProfileTabView()
-        .environmentObject(FavoriteStore())
-        .environmentObject(LocationManager())
 }

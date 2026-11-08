@@ -49,7 +49,7 @@ by step, simply and clearly.
 - `ViewModels/PlacesViewModel` — shared search state
 - `Services/` — `LocationManager`, `PlacesSearchService`, `FavoriteStore`
 - `Utilities/` — `AppTheme`, `DonerConeLogo`, `DonerGlyph`, `DistanceFormatter`,
-  `DirectionsHelper`, `TransportMode`, `AppearanceMode`, `AdaptiveText`, `MailView`
+  `DirectionsHelper`, `TransportMode`, `AppearanceMode`, `AdaptiveText`
 - `Views/` — `RootView` (splash + onboarding), `MapTabView`, `ClusteredMapView`, `ListTabView`,
   `PlaceDetailCard`, `ProfileTabView` ("More"), `OnboardingView`, `LoadingView`,
   error/permission screens

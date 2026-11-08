@@ -13,6 +13,7 @@ struct PlaceDetailCard: View {
     @EnvironmentObject private var favoriteStore: FavoriteStore
     @Environment(\.openURL) private var openURL
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @AppStorage("preferredMapsApp") private var preferredMapsRaw = PreferredMapsApp.ask.rawValue
     @State private var showDirectionsOptions = false
     @State private var transportMode: TransportMode = .driving
     @State private var drivingEstimate: TravelEstimate?
@@ -242,9 +243,7 @@ struct PlaceDetailCard: View {
                 .tint(isFavorite ? .red : .gray)
                 .accessibilityLabel(isFavorite ? "Remove from favorites" : "Add to favorites")
 
-                Button {
-                    showDirectionsOptions = true
-                } label: {
+                Button(action: getDirections) {
                     // On narrow screens / long translations, drop the icon first
                     // and shrink the text if needed, instead of wrapping.
                     ViewThatFits(in: .horizontal) {
@@ -304,6 +303,14 @@ struct PlaceDetailCard: View {
             return DistanceFormatter.string(fromMeters: meters)
         }
         return place.formattedDistance
+    }
+
+    private func getDirections() {
+        switch PreferredMapsApp(rawValue: preferredMapsRaw) ?? .ask {
+        case .ask: showDirectionsOptions = true
+        case .apple: DirectionsHelper.openInAppleMaps(place: place, mode: transportMode)
+        case .google: DirectionsHelper.openInGoogleMaps(place: place, mode: transportMode)
+        }
     }
 
     private func toggleFavorite() {

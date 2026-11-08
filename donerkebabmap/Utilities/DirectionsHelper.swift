@@ -4,7 +4,25 @@
 //
 
 import MapKit
+import SwiftUI
 import UIKit
+
+/// The app "Get Directions" opens. Persisted with `@AppStorage`.
+enum PreferredMapsApp: String, CaseIterable, Identifiable {
+    case ask
+    case apple
+    case google
+
+    var id: String { rawValue }
+
+    var titleKey: LocalizedStringKey {
+        switch self {
+        case .ask: "Ask Every Time"
+        case .apple: "Apple Maps"
+        case .google: "Google Maps"
+        }
+    }
+}
 
 enum DirectionsHelper {
     static func openInAppleMaps(place: DonerPlace, mode: TransportMode = .driving) {

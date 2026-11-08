@@ -23,12 +23,12 @@ No credentials or sample files needed.
 - Nearby places load automatically as pins.
 - Tap a pin for details: route preview, distance, travel time, arrival time, address, phone/website when available, favorite (heart), Get Directions, Share.
 - Pan the map to another area and tap "Search This Area" to find places there.
-- List tab: same places sorted by distance.
-- More tab: favorites (swipe to delete), appearance (System/Light/Dark), version, contact.
+- List tab: search, plus Nearby and Favorites filters, sorted by distance.
+- More tab: appearance (System/Light/Dark), directions app, rating, sharing, support, privacy policy, version.
 If location is denied, the app still opens and offers a button to open Settings.
 
 5. EXTERNAL SERVICES
-Only Apple frameworks: MapKit (place search, routes and travel-time estimates), Core Location (device location), MessageUI (contact email, user-initiated). Directions open Apple Maps or Google Maps at the user's choice; only destination coordinates are passed in the URL. No backend server, no authentication, no payments, no ads, no analytics or tracking SDKs, no AI services. Favorites and settings are stored locally on the device only. No personal data is collected or shared (see privacy manifest and privacy policy).
+Only Apple frameworks: MapKit (place search, routes and travel-time estimates), Core Location (device location), WebKit (in-app support and privacy pages). Directions open Apple Maps or Google Maps at the user's choice; only destination coordinates are passed in the URL. No backend server, no authentication, no payments, no ads, no analytics or tracking SDKs, no AI services. Favorites and settings are stored locally on the device only. No personal data is collected or shared (see privacy manifest and privacy policy).
 
 6. REGIONAL DIFFERENCES
 The app works the same in all regions; no region-locked features or content. The UI is localized in English, German, and French. The only variation is the number of results, which depends on Apple Maps coverage in the area.

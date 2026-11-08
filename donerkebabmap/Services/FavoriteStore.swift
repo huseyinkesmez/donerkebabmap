@@ -42,13 +42,6 @@ final class FavoriteStore: ObservableObject {
         save()
     }
 
-    func remove(at offsets: IndexSet) {
-        for index in offsets.sorted(by: >) where favorites.indices.contains(index) {
-            favorites.remove(at: index)
-        }
-        save()
-    }
-
     /// Every favorite as a place, nearest first. Uses the searched place when it
     /// is loaded (it has full details) and otherwise builds one from the saved
     /// data, so favorites outside the searched areas still appear.
