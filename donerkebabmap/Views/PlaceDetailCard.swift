@@ -28,11 +28,10 @@ struct PlaceDetailCard: View {
                 VStack(alignment: .leading, spacing: 20) {
                     mapPreview
                     header
-                    applePlaceCardRow
                     transportPicker
                     infoSection
 
-                    if place.phoneNumber != nil || place.website != nil {
+                    if place.phoneNumber != nil || place.website != nil || canShowApplePlaceCard {
                         Divider()
                         contactSection
                     }
@@ -146,16 +145,13 @@ struct PlaceDetailCard: View {
     }
 
     /// Apple's own place card (iOS 18+) can show details MapKit doesn't expose
-    /// to code, such as opening hours and photos.
-    @ViewBuilder
-    private var applePlaceCardRow: some View {
-        // Favorites rebuilt from saved data have no MapKit identifier, so Apple
-        // has nothing to show for them.
-        if #available(iOS 18.0, *), place.mapItem.identifier != nil {
-            ContactRow(icon: "info.circle.fill", text: String(localized: "Details in Apple Maps")) {
-                showsApplePlaceCard = true
-            }
+    /// to code, such as opening hours and photos. Favorites rebuilt from saved
+    /// data have no MapKit identifier, so Apple has nothing to show for them.
+    private var canShowApplePlaceCard: Bool {
+        if #available(iOS 18.0, *) {
+            return place.mapItem.identifier != nil
         }
+        return false
     }
 
     private var transportPicker: some View {
@@ -207,6 +203,11 @@ struct PlaceDetailCard: View {
 
     private var contactSection: some View {
         VStack(alignment: .leading, spacing: 4) {
+            if canShowApplePlaceCard {
+                ContactRow(icon: "info.circle.fill", text: String(localized: "Details in Apple Maps")) {
+                    showsApplePlaceCard = true
+                }
+            }
             if let phone = place.phoneNumber {
                 ContactRow(icon: "phone.fill", text: phone) {
                     callPhone(phone)

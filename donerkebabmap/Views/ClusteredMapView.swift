@@ -146,6 +146,7 @@ struct ClusteredMapView: UIViewRepresentable {
         private var regionChangeIsFromUser = false
         private var annotationsByID: [UUID: PlaceAnnotation] = [:]
         private var favoriteIDs: Set<UUID> = []
+        private var isLabelResolutionScheduled = false
         private var isZoomedIn = true
         private var selectedID: UUID?
         /// True while we select a pin from code, so it isn't treated as a tap.
@@ -199,6 +200,7 @@ struct ClusteredMapView: UIViewRepresentable {
             let changed = ids.symmetricDifference(favoriteIDs)
             guard !changed.isEmpty else { return }
             favoriteIDs = ids
+            scheduleLabelResolution(on: mapView)
             for id in changed {
                 guard let annotation = annotationsByID[id],
                       let view = mapView.view(for: annotation) as? PlaceAnnotationView else { continue }
@@ -206,9 +208,42 @@ struct ClusteredMapView: UIViewRepresentable {
             }
         }
 
+        /// Runs once after a batch of changes, when the new views have been laid out.
+        private func scheduleLabelResolution(on mapView: MKMapView) {
+            guard !isLabelResolutionScheduled else { return }
+            isLabelResolutionScheduled = true
+            DispatchQueue.main.async { [weak self, weak mapView] in
+                self?.isLabelResolutionScheduled = false
+                if let mapView { self?.resolveLabelOverlaps(on: mapView) }
+            }
+        }
+
+        /// Keeps name labels readable: where labels would overlap, only the most
+        /// important one stays (selected, then favorites, then nearest).
+        private func resolveLabelOverlaps(on mapView: MKMapView) {
+            let views = mapView.annotations(in: mapView.visibleMapRect)
+                .compactMap { $0 as? PlaceAnnotation }
+                .sorted { labelRank($0) < labelRank($1) }
+                .compactMap { mapView.view(for: $0) as? PlaceAnnotationView }
+
+            var shownFrames: [CGRect] = []
+            for view in views {
+                let frame = view.labelFrame(in: mapView).insetBy(dx: -2, dy: -2)
+                let overlaps = shownFrames.contains { $0.intersects(frame) }
+                view.setLabelSuppressed(overlaps)
+                if !overlaps { shownFrames.append(frame) }
+            }
+        }
+
+        private func labelRank(_ annotation: PlaceAnnotation) -> (Int, Double) {
+            let priority = annotation.place.id == selectedID ? 0 : favoriteIDs.contains(annotation.place.id) ? 1 : 2
+            return (priority, annotation.place.distanceInMeters ?? .infinity)
+        }
+
         /// Mirrors the SwiftUI selection onto the map: highlight the pin while its
         /// sheet is open, and clear the highlight once the sheet is dismissed.
         func syncSelection(_ selectedID: UUID?, on mapView: MKMapView) {
+            if selectedID != self.selectedID { scheduleLabelResolution(on: mapView) }
             self.selectedID = selectedID
             let selectedPlaces = mapView.selectedAnnotations.compactMap { $0 as? PlaceAnnotation }
             guard let selectedID else {
@@ -229,6 +264,7 @@ struct ClusteredMapView: UIViewRepresentable {
         /// Keep the blue user location dot above pins and their name labels;
         /// otherwise it disappears under them in busy areas.
         func mapView(_ mapView: MKMapView, didAdd views: [MKAnnotationView]) {
+            scheduleLabelResolution(on: mapView)
             for view in views where view.annotation is MKUserLocation {
                 view.displayPriority = .required
                 view.zPriority = .max
@@ -291,6 +327,7 @@ struct ClusteredMapView: UIViewRepresentable {
         func mapView(_ mapView: MKMapView, regionDidChangeAnimated animated: Bool) {
             onRegionChange(mapView.region, regionChangeIsFromUser)
             regionChangeIsFromUser = false
+            scheduleLabelResolution(on: mapView)
 
             let zoomedIn = mapView.region.span.latitudeDelta < Self.zoomedInMaxLatitudeDelta
             guard zoomedIn != isZoomedIn else { return }
@@ -412,10 +449,25 @@ final class PlaceAnnotationView: MKAnnotationView {
     }
 
     private var labelAllowedByZoom = true
+    /// True when this label would overlap a more important one.
+    private var isLabelSuppressed = false
 
     /// The selected pin always shows its name, whatever the zoom level.
     private func updateLabelVisibility() {
-        label.isHidden = !(labelAllowedByZoom || isSelected)
+        label.isHidden = !isSelected && (!labelAllowedByZoom || isLabelSuppressed)
+    }
+
+    func setLabelSuppressed(_ isSuppressed: Bool) {
+        isLabelSuppressed = isSuppressed
+        updateLabelVisibility()
+    }
+
+    func labelFrame(in mapView: MKMapView) -> CGRect {
+        // This can run before `prepareForDisplay()`, when the label is still empty.
+        label.text = annotation?.title ?? nil
+        setNeedsLayout()
+        layoutIfNeeded()
+        return convert(label.frame, to: mapView)
     }
 
     override func layoutSubviews() {

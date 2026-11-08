@@ -182,13 +182,7 @@ private struct PlaceRow: View {
     let place: DonerPlace
     let isFavorite: Bool
 
-    /// Color by distance: near = blue, shifting to red as it gets farther (~5 km+),
-    /// passing through cyan/green/orange in between.
-    static func distanceColor(forMeters meters: Double) -> Color {
-        let t = min(max(meters / 5000, 0), 1) // 0 km -> 0, 5 km+ -> 1
-        let hue = 0.58 * (1 - t)              // 0.58 (blue) -> 0.0 (red)
-        return Color(hue: hue, saturation: 0.85, brightness: 0.80)
-    }
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
         HStack(spacing: 14) {
@@ -207,7 +201,7 @@ private struct PlaceRow: View {
                     Text(place.name)
                         .font(.headline)
                         .foregroundStyle(.primary)
-                        .lineLimit(1)
+                        .lineLimit(dynamicTypeSize.isAccessibilitySize ? 3 : 2)
 
                     if isFavorite {
                         Image(systemName: "heart.fill")
@@ -227,15 +221,14 @@ private struct PlaceRow: View {
             Spacer(minLength: 8)
 
             VStack(alignment: .trailing, spacing: 8) {
-                if let distance = place.formattedDistance, let meters = place.distanceInMeters {
-                    let color = Self.distanceColor(forMeters: meters)
+                if let distance = place.formattedDistance {
                     Text(distance)
                         .font(.caption)
                         .fontWeight(.semibold)
-                        .foregroundStyle(color)
+                        .foregroundStyle(.secondary)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
-                        .background(color.opacity(0.15), in: Capsule())
+                        .background(Color(.tertiarySystemFill), in: Capsule())
                 }
 
                 Image(systemName: "chevron.right")

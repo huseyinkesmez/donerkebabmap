@@ -39,7 +39,8 @@ struct MapTabView: View {
             map
             searchAreaOverlay
                 .padding(.top, 8)
-            if !isLocationDenied {
+            // Hidden over the full-screen loading and error states.
+            if !isLocationDenied, !placesViewModel.places.isEmpty {
                 favoritesFilterButton
                     .frame(maxWidth: .infinity, alignment: .trailing)
                     // Directly below MapKit's location button.
@@ -158,12 +159,18 @@ struct MapTabView: View {
                 }
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(.white)
+                // One line even for long translations and large text sizes.
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+                .dynamicTypeSize(...DynamicTypeSize.xxLarge)
                 .padding(.horizontal, 16)
                 .padding(.vertical, 10)
                 .background(AppTheme.primary, in: Capsule())
                 .shadow(color: .black.opacity(0.2), radius: 6, y: 2)
             }
             .buttonStyle(.plain)
+            // Clear of the location and favorites buttons on the right.
+            .padding(.horizontal, 68)
             .disabled(isSearchingArea)
             .transition(.move(edge: .top).combined(with: .opacity))
         }
