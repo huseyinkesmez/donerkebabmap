@@ -2,9 +2,8 @@
 
 ## About
 iOS app (Swift + SwiftUI, MVVM) that shows doner/kebab/gyro places near the
-user on a map. **v1.0.1 is live on the App Store** (build 6, git tag `v1.0.1`);
-**v1.1.0 (build 8, tag `v1.1.0`) was submitted for review on 2026-10-25**
-(build 7 / tag `v1.1` was uploaded as "1.1" first and is unused).
+user on a map. **v1.1.0 is live on the App Store** (build 8, git tag `v1.1.0`).
+Build 7 / tag `v1.1` was uploaded as "1.1" first and is unused.
 
 The developer is a QA engineer with limited software background: explain step
 by step, simply and clearly.
@@ -64,5 +63,4 @@ by step, simply and clearly.
 - Running in the simulator: set a simulated location first (e.g. Berlin 52.52, 13.405).
 
 ## Possible next steps
-List search/filter, route line, ratings and opening hours via
-Overpass / Google Places.
+List search/filter, ratings and opening hours via Overpass / Google Places.
