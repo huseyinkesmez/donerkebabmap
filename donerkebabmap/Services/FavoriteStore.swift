@@ -49,6 +49,21 @@ final class FavoriteStore: ObservableObject {
         save()
     }
 
+    /// Every favorite as a place, nearest first. Uses the searched place when it
+    /// is loaded (it has full details) and otherwise builds one from the saved
+    /// data, so favorites outside the searched areas still appear.
+    func places(
+        matching loaded: [DonerPlace],
+        userLocation: CLLocationCoordinate2D?
+    ) -> [DonerPlace] {
+        favorites
+            .map { favorite in
+                loaded.first { matches(favorite, $0) }
+                    ?? DonerPlace(favorite: favorite, userLocation: userLocation)
+            }
+            .sorted { ($0.distanceInMeters ?? .infinity) < ($1.distanceInMeters ?? .infinity) }
+    }
+
     // MARK: - Matching
 
     private func matches(_ favorite: FavoritePlace, _ place: DonerPlace) -> Bool {

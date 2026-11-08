@@ -149,7 +149,9 @@ struct PlaceDetailCard: View {
     /// to code, such as opening hours and photos.
     @ViewBuilder
     private var applePlaceCardRow: some View {
-        if #available(iOS 18.0, *) {
+        // Favorites rebuilt from saved data have no MapKit identifier, so Apple
+        // has nothing to show for them.
+        if #available(iOS 18.0, *), place.mapItem.identifier != nil {
             ContactRow(icon: "info.circle.fill", text: String(localized: "Details in Apple Maps")) {
                 showsApplePlaceCard = true
             }

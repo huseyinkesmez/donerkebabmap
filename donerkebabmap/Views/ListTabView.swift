@@ -6,12 +6,56 @@
 import CoreLocation
 import SwiftUI
 
+private enum ListFilter: CaseIterable, Identifiable {
+    case nearby, favorites
+
+    var id: Self { self }
+
+    var titleKey: LocalizedStringKey {
+        switch self {
+        case .nearby: "Nearby"
+        case .favorites: "Favorites"
+        }
+    }
+}
+
 struct ListTabView: View {
     @EnvironmentObject private var placesViewModel: PlacesViewModel
     @EnvironmentObject private var favoriteStore: FavoriteStore
     @EnvironmentObject private var locationManager: LocationManager
 
     @State private var selectedPlace: DonerPlace?
+    @State private var filter: ListFilter = .nearby
+    @State private var searchText = ""
+
+    /// "Nearby" keeps to the distance of the search around the user, so areas
+    /// searched with "Search This Area" don't mix into it.
+    private var filteredPlaces: [DonerPlace] {
+        let places: [DonerPlace]
+        switch filter {
+        case .nearby:
+            places = placesViewModel.places.filter {
+                ($0.distanceInMeters ?? 0) <= placesViewModel.searchRadius
+            }
+        case .favorites:
+            places = favoriteStore.places(
+                matching: placesViewModel.places,
+                userLocation: locationManager.userLocation
+            )
+        }
+
+        let query = Self.searchable(searchText.trimmingCharacters(in: .whitespaces))
+        guard !query.isEmpty else { return places }
+        return places.filter {
+            Self.searchable($0.name).contains(query) || Self.searchable($0.address).contains(query)
+        }
+    }
+
+    /// Lets people type without Turkish characters: "tadim" finds "Tadım".
+    private static func searchable(_ text: String) -> String {
+        text.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: nil)
+            .replacingOccurrences(of: "ı", with: "i")
+    }
 
     private var isLocationDenied: Bool {
         locationManager.authorizationStatus == .denied ||
@@ -24,17 +68,17 @@ struct ListTabView: View {
                 if placesViewModel.places.isEmpty {
                     emptyState
                 } else {
-                    placesList
+                    filteredContent
                 }
             }
-            .navigationTitle("Nearby")
+            .navigationTitle("Places")
             .toolbar {
                 if !placesViewModel.places.isEmpty {
                     ToolbarItem(placement: .topBarTrailing) {
                         HStack(spacing: 5) {
                             Image(systemName: "mappin.and.ellipse")
                                 .font(.caption2.weight(.bold))
-                            Text("\(placesViewModel.places.count)")
+                            Text("\(filteredPlaces.count)")
                                 .font(.footnote.weight(.semibold))
                                 .contentTransition(.numericText())
                         }
@@ -51,10 +95,51 @@ struct ListTabView: View {
         }
     }
 
+    private var filteredContent: some View {
+        VStack(spacing: 0) {
+            Picker("Filter", selection: $filter) {
+                ForEach(ListFilter.allCases) { filter in
+                    Text(filter.titleKey).tag(filter)
+                }
+            }
+            .pickerStyle(.segmented)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+
+            if filteredPlaces.isEmpty {
+                noResults
+                    .frame(maxHeight: .infinity)
+            } else {
+                placesList
+            }
+        }
+        .background(Color(.systemGroupedBackground))
+        .searchable(text: $searchText, prompt: "Search places")
+    }
+
+    @ViewBuilder
+    private var noResults: some View {
+        if !searchText.trimmingCharacters(in: .whitespaces).isEmpty {
+            ContentUnavailableView.search(text: searchText)
+        } else if filter == .favorites {
+            ContentUnavailableView(
+                "No Favorites",
+                systemImage: "heart",
+                description: Text("You haven't added any favorites yet.")
+            )
+        } else {
+            ContentUnavailableView(
+                "No Places Found",
+                systemImage: "fork.knife",
+                description: Text("No doner or kebab places were found nearby.")
+            )
+        }
+    }
+
     private var placesList: some View {
         ScrollView {
             LazyVStack(spacing: 12) {
-                ForEach(placesViewModel.places) { place in
+                ForEach(filteredPlaces) { place in
                     Button {
                         selectedPlace = place
                     } label: {
@@ -66,7 +151,6 @@ struct ListTabView: View {
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
         }
-        .background(Color(.systemGroupedBackground))
     }
 
     private func retrySearch() {

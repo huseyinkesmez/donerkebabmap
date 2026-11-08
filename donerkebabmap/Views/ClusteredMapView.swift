@@ -18,6 +18,8 @@ struct ClusteredMapView: UIViewRepresentable {
     let initialZoomMeters: CLLocationDistance
     /// The place whose detail sheet is open; its pin stays highlighted.
     let selectedPlaceID: UUID?
+    /// Places whose pins carry a heart badge.
+    let favoriteIDs: Set<UUID>
     let onSelect: (DonerPlace) -> Void
     /// Called when the visible region settles. `userInitiated` is false for moves
     /// made in code (initial focus, revealing a selected pin, zooming into a cluster).
@@ -88,14 +90,21 @@ struct ClusteredMapView: UIViewRepresentable {
         coordinator.onRegionChange = onRegionChange
         coordinator.onReturnToUser = onReturnToUser
         coordinator.onPinTap = onPinTap
+        coordinator.syncFavorites(favoriteIDs, on: mapView)
         coordinator.sync(places, on: mapView)
         coordinator.syncSelection(selectedPlaceID, on: mapView)
 
         if let zoomTarget, zoomTarget.id != coordinator.lastZoomTargetID {
             coordinator.lastZoomTargetID = zoomTarget.id
-            let rect = zoomTarget.coordinates
+            let bounds = zoomTarget.coordinates
                 .map { MKMapRect(origin: MKMapPoint($0), size: MKMapSize(width: 0, height: 0)) }
                 .reduce(MKMapRect.null) { $0.union($1) }
+            // A single coordinate has no size; show at least ~1 km around it.
+            let minimumSize = 1_000 * MKMapPointsPerMeterAtLatitude(bounds.origin.coordinate.latitude)
+            let rect = bounds.insetBy(
+                dx: min(0, (bounds.width - minimumSize) / 2),
+                dy: min(0, (bounds.height - minimumSize) / 2)
+            )
             mapView.setVisibleMapRect(
                 rect,
                 edgePadding: UIEdgeInsets(top: 140, left: 60, bottom: 140, right: 60),
@@ -136,6 +145,7 @@ struct ClusteredMapView: UIViewRepresentable {
         /// Set by a user gesture; reported and cleared when the region settles.
         private var regionChangeIsFromUser = false
         private var annotationsByID: [UUID: PlaceAnnotation] = [:]
+        private var favoriteIDs: Set<UUID> = []
         private var isZoomedIn = true
         private var selectedID: UUID?
         /// True while we select a pin from code, so it isn't treated as a tap.
@@ -183,6 +193,19 @@ struct ClusteredMapView: UIViewRepresentable {
             mapView.addAnnotations(added)
         }
 
+        /// Updates the pins whose favorite state changed. Pins without a view yet
+        /// (or inside a cluster) pick the state up in `viewFor`.
+        func syncFavorites(_ ids: Set<UUID>, on mapView: MKMapView) {
+            let changed = ids.symmetricDifference(favoriteIDs)
+            guard !changed.isEmpty else { return }
+            favoriteIDs = ids
+            for id in changed {
+                guard let annotation = annotationsByID[id],
+                      let view = mapView.view(for: annotation) as? PlaceAnnotationView else { continue }
+                view.setFavorite(ids.contains(id))
+            }
+        }
+
         /// Mirrors the SwiftUI selection onto the map: highlight the pin while its
         /// sheet is open, and clear the highlight once the sheet is dismissed.
         func syncSelection(_ selectedID: UUID?, on mapView: MKMapView) {
@@ -224,7 +247,10 @@ struct ClusteredMapView: UIViewRepresentable {
                     withIdentifier: PlaceAnnotationView.reuseIdentifier,
                     for: place
                 )
-                (view as? PlaceAnnotationView)?.configure(zoomedIn: isZoomedIn)
+                (view as? PlaceAnnotationView)?.configure(
+                    zoomedIn: isZoomedIn,
+                    isFavorite: favoriteIDs.contains(place.place.id)
+                )
                 return view
             default:
                 return nil // user location: system blue dot
@@ -351,11 +377,19 @@ final class PlaceAnnotationView: MKAnnotationView {
     /// False when zoomed in: every pin is shown on its own, nothing clusters.
     private var clusteringEnabled = true
 
-    func configure(zoomedIn: Bool) {
+    private var isFavorite = false
+
+    func configure(zoomedIn: Bool, isFavorite: Bool) {
         clusteringEnabled = !zoomedIn
         labelAllowedByZoom = zoomedIn
         applyClusteringSettings()
         updateLabelVisibility()
+        setFavorite(isFavorite)
+    }
+
+    func setFavorite(_ isFavorite: Bool) {
+        self.isFavorite = isFavorite
+        applyMarkerImage()
     }
 
     private func applyClusteringSettings() {
@@ -370,7 +404,7 @@ final class PlaceAnnotationView: MKAnnotationView {
     }
 
     private func applyMarkerImage() {
-        let image = isSelected ? PinArtwork.selectedImage : PinArtwork.image
+        let image = PinArtwork.image(isSelected: isSelected, isFavorite: isFavorite)
         self.image = image
         // Put the pointer tip, not the image center, on the coordinate.
         centerOffset = CGPoint(x: 0, y: -(image.size.height / 2 - PinArtwork.shadowPadding))
@@ -528,8 +562,19 @@ private final class CapsuleLabel: UILabel {
 enum PinArtwork {
     static let shadowPadding: CGFloat = 6
 
-    static let image = render(MarkerArtwork(isSelected: false))
-    static let selectedImage = render(MarkerArtwork(isSelected: true))
+    private static let normal = render(MarkerArtwork(isSelected: false, isFavorite: false))
+    private static let selected = render(MarkerArtwork(isSelected: true, isFavorite: false))
+    private static let favorite = render(MarkerArtwork(isSelected: false, isFavorite: true))
+    private static let selectedFavorite = render(MarkerArtwork(isSelected: true, isFavorite: true))
+
+    static func image(isSelected: Bool, isFavorite: Bool) -> UIImage {
+        switch (isSelected, isFavorite) {
+        case (false, false): normal
+        case (true, false): selected
+        case (false, true): favorite
+        case (true, true): selectedFavorite
+        }
+    }
 
     private static func render(_ marker: MarkerArtwork) -> UIImage {
         let renderer = ImageRenderer(content: marker.padding(shadowPadding))
@@ -542,6 +587,8 @@ enum PinArtwork {
 /// colors (white fill, brand glyph and ring) so it stands out from other pins.
 private struct MarkerArtwork: View {
     let isSelected: Bool
+    /// Adds a small heart badge on the circle's corner.
+    let isFavorite: Bool
 
     var body: some View {
         let circle: CGFloat = isSelected ? 44 : 34
@@ -559,6 +606,16 @@ private struct MarkerArtwork: View {
                         .frame(width: circle, height: circle)
                         .background(AppTheme.brandGradient, in: Circle())
                         .overlay(Circle().strokeBorder(.white, lineWidth: 2))
+                }
+            }
+            .overlay(alignment: .topTrailing) {
+                if isFavorite {
+                    Image(systemName: "heart.fill")
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundStyle(.red)
+                        .frame(width: 17, height: 17)
+                        .background(Color.white, in: Circle())
+                        .offset(x: 5, y: -5)
                 }
             }
 

@@ -93,7 +93,8 @@ extension DonerPlace {
         mapItem.name = favorite.name
 
         self.init(
-            id: UUID(),
+            // Stable, so the same favorite keeps its map pin across updates.
+            id: favorite.id,
             name: favorite.name,
             coordinate: coordinate,
             address: favorite.address,

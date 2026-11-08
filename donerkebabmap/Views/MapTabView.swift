@@ -9,6 +9,7 @@ import SwiftUI
 struct MapTabView: View {
     @EnvironmentObject private var locationManager: LocationManager
     @EnvironmentObject private var placesViewModel: PlacesViewModel
+    @EnvironmentObject private var favoriteStore: FavoriteStore
 
     @State private var selectedPlace: DonerPlace?
     /// Kept separate from `selectedPlace` so tapping another pin while the sheet
@@ -20,6 +21,7 @@ struct MapTabView: View {
     @State private var mapMovedSinceSearch = false
     @State private var isSearchingArea = false
     @State private var toastMessage: LocalizedStringKey?
+    @State private var showsOnlyFavorites = false
     /// Set to zoom the map to area results that are all off screen.
     @State private var zoomTarget: ClusteredMapView.ZoomTarget?
     @State private var mapReader = ClusteredMapView.MapReader()
@@ -37,15 +39,60 @@ struct MapTabView: View {
             map
             searchAreaOverlay
                 .padding(.top, 8)
+            if !isLocationDenied {
+                favoritesFilterButton
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+                    // Directly below MapKit's location button.
+                    .padding(.top, 68)
+                    .padding(.trailing, 18)
+            }
+        }
+    }
+
+    private var favoritePlaces: [DonerPlace] {
+        favoriteStore.places(matching: placesViewModel.places, userLocation: locationManager.userLocation)
+    }
+
+    private var displayedPlaces: [DonerPlace] {
+        showsOnlyFavorites ? favoritePlaces : placesViewModel.places
+    }
+
+    private var favoritesFilterButton: some View {
+        Button(action: toggleFavoritesFilter) {
+            Image(systemName: showsOnlyFavorites ? "heart.fill" : "heart")
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(showsOnlyFavorites ? Color.red : Color.primary)
+                .frame(width: 44, height: 44)
+                .background(.regularMaterial, in: Circle())
+                .shadow(color: .black.opacity(0.15), radius: 4, y: 2)
+        }
+        .buttonStyle(.plain)
+        .sensoryFeedback(.selection, trigger: showsOnlyFavorites)
+        .accessibilityLabel(showsOnlyFavorites ? "Show all places" : "Show only favorites")
+    }
+
+    private func toggleFavoritesFilter() {
+        guard showsOnlyFavorites || !favoriteStore.favorites.isEmpty else {
+            Task { await showToast("You haven't added any favorites yet.") }
+            return
+        }
+        showsOnlyFavorites.toggle()
+
+        // Favorites can be anywhere; bring them into view if none are on screen.
+        let favorites = favoritePlaces
+        if showsOnlyFavorites, let visibleRegion,
+           !favorites.contains(where: { visibleRegion.contains($0.coordinate) }) {
+            zoomTarget = .init(coordinates: favorites.map(\.coordinate))
         }
     }
 
     private var map: some View {
         ClusteredMapView(
-            places: placesViewModel.places,
+            places: displayedPlaces,
             focusCoordinate: locationManager.userLocation,
             initialZoomMeters: initialZoomMeters,
             selectedPlaceID: selectedPlace?.id,
+            favoriteIDs: Set(displayedPlaces.filter(favoriteStore.isFavorite).map(\.id)),
             onSelect: { place in
                 selectedPlace = place
                 isShowingDetail = true
@@ -97,7 +144,7 @@ struct MapTabView: View {
                 .shadow(color: .black.opacity(0.15), radius: 6, y: 2)
                 .padding(.horizontal, 24)
                 .transition(.move(edge: .top).combined(with: .opacity))
-        } else if isSearchingArea || (mapMovedSinceSearch && !isLocationDenied && !showsSeveralPins) {
+        } else if isSearchingArea || (mapMovedSinceSearch && !isLocationDenied && !showsSeveralPins && !showsOnlyFavorites) {
             Button(action: searchVisibleArea) {
                 HStack(spacing: 8) {
                     if isSearchingArea {
@@ -165,7 +212,7 @@ struct MapTabView: View {
             }
             if found.isEmpty {
                 await showToast("No doner places in this area")
-            } else {
+            } else if !showsOnlyFavorites {
                 showIfOffScreen(found, around: region)
             }
         }
