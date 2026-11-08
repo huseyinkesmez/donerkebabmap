@@ -20,6 +20,7 @@ struct PlaceDetailCard: View {
     @State private var detent: PresentationDetent = .fraction(0.55)
     /// Changes on every favorite toggle to play a haptic.
     @State private var favoriteFeedbackTrigger = 0
+    @State private var showsApplePlaceCard = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -27,6 +28,7 @@ struct PlaceDetailCard: View {
                 VStack(alignment: .leading, spacing: 20) {
                     mapPreview
                     header
+                    applePlaceCardRow
                     transportPicker
                     infoSection
 
@@ -67,7 +69,9 @@ struct PlaceDetailCard: View {
             drivingEstimate = nil
             walkingEstimate = nil
             detent = defaultDetent
+            showsApplePlaceCard = false
         }
+        .modifier(ApplePlaceCardSheet(isPresented: $showsApplePlaceCard, mapItem: place.mapItem))
         .confirmationDialog(
             "Get Directions",
             isPresented: $showDirectionsOptions,
@@ -137,6 +141,17 @@ struct PlaceDetailCard: View {
                         .padding(.vertical, 3)
                         .background(AppTheme.primaryAccent.opacity(0.12), in: Capsule())
                 }
+            }
+        }
+    }
+
+    /// Apple's own place card (iOS 18+) can show details MapKit doesn't expose
+    /// to code, such as opening hours and photos.
+    @ViewBuilder
+    private var applePlaceCardRow: some View {
+        if #available(iOS 18.0, *) {
+            ContactRow(icon: "info.circle.fill", text: String(localized: "Details in Apple Maps")) {
+                showsApplePlaceCard = true
             }
         }
     }
@@ -404,6 +419,20 @@ private struct RoutePreviewMap: View {
         let minSize = 300 * MKMapPointsPerMeterAtLatitude(place.coordinate.latitude)
         let padding = max(max(rect.width, rect.height) * 0.25, (minSize - max(rect.width, rect.height)) / 2)
         return .rect(rect.insetBy(dx: -padding, dy: -padding * 1.5))
+    }
+}
+
+/// Presents Apple's place card where it exists; does nothing before iOS 18.
+private struct ApplePlaceCardSheet: ViewModifier {
+    @Binding var isPresented: Bool
+    let mapItem: MKMapItem
+
+    func body(content: Content) -> some View {
+        if #available(iOS 18.0, *) {
+            content.mapItemDetailSheet(isPresented: $isPresented, item: mapItem, displaysMap: false)
+        } else {
+            content
+        }
     }
 }
 
