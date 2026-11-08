@@ -2,8 +2,8 @@
 
 ## About
 iOS app (Swift + SwiftUI, MVVM) that shows doner/kebab/gyro places near the
-user on a map. **v1.1.0 is live on the App Store** (build 8, git tag `v1.1.0`).
-Build 7 / tag `v1.1` was uploaded as "1.1" first and is unused.
+user on a map. **v1.1.0 is live on the App Store** (build 8, git tag `v1.1.0`);
+**v1.2.0 (build 9, tag `v1.2.0`) was uploaded for review on 2026-11-08.**
 
 The developer is a QA engineer with limited software background: explain step
 by step, simply and clearly.
@@ -57,10 +57,10 @@ by step, simply and clearly.
 - `.claude/skills/release/` — `/release` skill for App Store releases
 
 ## Releasing
-- Use `/release`. Next build number is **9+**; next version 1.1.1 or 1.2.0.
+- Use `/release`. Next build number is **10+**; next version 1.2.1 or 1.3.0 (always three parts).
 - App Review Notes: `docs/app-review-notes.txt` (< 4000 chars). Keep the
   "results depend on location, test in a big city" paragraph.
 - Running in the simulator: set a simulated location first (e.g. Berlin 52.52, 13.405).
 
 ## Possible next steps
-List search/filter, ratings and opening hours via Overpass / Google Places.
+Ratings and opening hours in code via Overpass / Google Places.

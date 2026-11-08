@@ -4,11 +4,11 @@ DEMO ACCOUNT: Not required. No accounts, login, purchases, subscriptions, or use
 
 IMPORTANT FOR TESTING: The app shows doner/kebab restaurants near the device's current location (20 km radius, via Apple MapKit). Results depend on the reviewer's location; in an area with few such restaurants, few or no pins may appear. This is expected behavior, not a bug. For a full result set, please test in or simulate a major city such as Berlin, London, or Istanbul.
 
-1. WHAT'S NEW IN 1.1
-- "Search This Area": after panning the map to another area, a button at the top searches around the map center and adds those places.
-- The place detail sheet shows the route from the user to the place on its small map.
-- Nearby pins group into numbered bubbles when zoomed out; tap a bubble to zoom in.
-- Refreshed colors and haptic feedback on pin taps and favorites.
+1. WHAT'S NEW IN 1.2
+- List tab: search by name or address, plus Nearby and Favorites filters.
+- Map: favorite pins carry a heart, and a heart button shows only favorites.
+- Place detail sheet: "Details in Apple Maps" opens Apple's place card with opening hours (iOS 18 and later).
+- More tab: default directions app, rate and share the app, in-app support and privacy pages.
 
 2. DEVICES TESTED
 iPhone 13, iOS 27.0 (physical device). Also tested on iOS Simulator (iPhone 17, iOS 26.2). The app supports iOS 17.0 and later.
